@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Fonts */
+  --font-family: 'Inter', sans-serif;
+
+  /* Orange/Warm Theme Colors */
+  --color-orange-50: oklch(0.97 0.01 60);
+  --color-orange-100: oklch(0.94 0.04 60);
+  --color-orange-200: oklch(0.87 0.08 60);
+  --color-orange-300: oklch(0.77 0.13 55);
+  --color-orange-400: oklch(0.68 0.17 50);
+  --color-orange-500: oklch(0.63 0.21 45);
+  --color-orange-600: oklch(0.54 0.20 40);
+  --color-orange-700: oklch(0.45 0.17 35);
+  --color-orange-800: oklch(0.37 0.13 30);
+  --color-orange-900: oklch(0.32 0.09 25);
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-2xl: 3rem;
+}
+
+* {
+  border-color: #e5e7eb;
+}
+
+html,
+body {
+  font-family: var(--font-family);
+}
+
+body {
+  background-color: #fef9f5;
+  color: #111827;
+}
