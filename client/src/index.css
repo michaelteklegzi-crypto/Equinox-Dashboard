@@ -5,18 +5,24 @@
   /* Fonts */
   --font-family: 'Inter', sans-serif;
 
-  /* Orange/Warm Theme Colors */
+  /* Industrial Dark Palette */
+  --color-dark-bg: #0E1117;
+  --color-dark-surface: #161B22;
+  --color-dark-border: #30363D;
+  
+  --color-accent-cyan: #06b6d4;
+  --color-accent-blue: #3b82f6;
+  
+  /* Status Colors */
+  --color-status-success: #238636;
+  --color-status-warning: #d29922;
+  --color-status-danger: #da3633;
+
+  /* Orange/Warm Theme Colors (Kept for Branding) */
   --color-orange-50: oklch(0.97 0.01 60);
   --color-orange-100: oklch(0.94 0.04 60);
-  --color-orange-200: oklch(0.87 0.08 60);
-  --color-orange-300: oklch(0.77 0.13 55);
-  --color-orange-400: oklch(0.68 0.17 50);
   --color-orange-500: oklch(0.63 0.21 45);
-  --color-orange-600: oklch(0.54 0.20 40);
-  --color-orange-700: oklch(0.45 0.17 35);
-  --color-orange-800: oklch(0.37 0.13 30);
-  --color-orange-900: oklch(0.32 0.09 25);
-
+  
   /* Radius */
   --radius-sm: 0.5rem;
   --radius: 1rem;
@@ -26,7 +32,7 @@
 }
 
 * {
-  border-color: #e5e7eb;
+  border-color: #30363D;
 }
 
 html,
@@ -35,6 +41,20 @@ body {
 }
 
 body {
-  background-color: #fef9f5;
-  color: #111827;
+  background-color: #0E1117;
+  color: #c9d1d9; /* Light grey text */
+}
+
+/* Custom Utilities for Dark Mode Panels */
+.panel {
+    background-color: #161B22;
+    border: 1px solid #30363D;
+}
+
+.text-primary {
+    color: #f0f6fc;
+}
+
+.text-secondary {
+    color: #8b949e;
 }

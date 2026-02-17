@@ -51,12 +51,28 @@ router.get('/kpi', async (req, res) => {
             }
         });
 
+        // 5. Enterprise Financials & Fuel
+        const financialsAgg = await prisma.dailyDrillingReport.aggregate({
+            where: {
+                reportDate: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                }
+            },
+            _sum: {
+                dailyCost: true,
+                fuelConsumed: true
+            }
+        });
+
         res.json({
             totalDepth: totalDepthAgg._sum.totalDrilled || 0,
             todayDepth: todayDepthAgg._sum.totalDrilled || 0,
             activeRigs: activeRigsCount.length,
             nptHours: nptAgg._sum.durationHours || 0,
-            recentIncidents: incidentsCount
+            recentIncidents: incidentsCount,
+            dailyCost: financialsAgg._sum.dailyCost || 0,
+            fuelConsumed: financialsAgg._sum.fuelConsumed || 0
         });
 
     } catch (error) {
@@ -65,17 +81,60 @@ router.get('/kpi', async (req, res) => {
     }
 });
 
+// Get Fleet Overview (Rig by Rig Performance for Last 30 Days)
+router.get('/fleet', async (req, res) => {
+    try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        // Fetch all rigs
+        const rigs = await prisma.rig.findMany({
+            orderBy: { name: 'asc' },
+            include: {
+                dailyReports: {
+                    where: { reportDate: { gte: thirtyDaysAgo } },
+                    select: { totalDrilled: true, dailyCost: true }
+                }
+            }
+        });
+
+        // Calculate aggregates for each rig
+        const fleetData = rigs.map(rig => {
+            const totalDepth = rig.dailyReports.reduce((sum, r) => sum + r.totalDrilled, 0);
+            const totalCost = rig.dailyReports.reduce((sum, r) => sum + (r.dailyCost || 0), 0);
+            const daysReported = rig.dailyReports.length || 1;
+
+            return {
+                id: rig.id,
+                name: rig.name,
+                site: rig.site,
+                type: rig.type,
+                status: rig.status,
+                totalDepth: totalDepth,
+                avgRop: (totalDepth / daysReported).toFixed(1), // Simplified ROP (m/day)
+                totalCost: totalCost
+            };
+        });
+
+        res.json(fleetData);
+    } catch (error) {
+        console.error("Fleet API Error:", error);
+        res.status(500).json({ error: "Failed to fetch fleet data" });
+    }
+});
+
 // Get Chart Data: Drilling Progress (Depth vs Date)
 router.get('/charts/depth', async (req, res) => {
     try {
-        // Fetch last 14 days of reports
+        // Fetch last 30 days of reports
         const stats = await prisma.dailyDrillingReport.findMany({
             orderBy: { reportDate: 'asc' },
             select: {
                 reportDate: true,
                 totalDrilled: true
             },
-            take: 30 // Approx last month of reports
+            // Take enough to cover 12 rigs * 30 days
+            take: 400
         });
 
         // Group by Date
