@@ -4,6 +4,9 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import ActionItemDetail from './pages/ActionItemDetail';
 import Reports from './pages/Reports';
+import DrillingReports from './pages/DrillingReports'; // New
+import ReportDetail from './pages/ReportDetail'; // New
+import MaintenanceReports from './pages/MaintenanceReports'; // New
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './context/ToastContext';
@@ -34,6 +37,27 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Reports />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/drilling" element={
+              <ProtectedRoute>
+                <Layout>
+                  <DrillingReports />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/drilling/:id" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ReportDetail />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/maintenance" element={
+              <ProtectedRoute>
+                <Layout>
+                  <MaintenanceReports />
                 </Layout>
               </ProtectedRoute>
             } />

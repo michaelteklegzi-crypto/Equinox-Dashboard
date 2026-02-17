@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, BarChart3, Settings, LogOut, Activity } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -36,8 +36,9 @@ export default function Layout({ children }) {
 
                 <nav className="flex-1 px-4 py-6 space-y-2">
                     <NavItem icon={LayoutDashboard} label="Dashboard" to="/" active={location.pathname === '/'} />
-                    <NavItem icon={FileText} label="All Actions" />
-                    <NavItem icon={BarChart3} label="Reports" to="/reports" active={location.pathname === '/reports'} />
+                    <NavItem icon={Activity} label="Drilling Ops" to="/drilling" active={location.pathname === '/drilling'} />
+                    <NavItem icon={BarChart3} label="Maintenance" to="/maintenance" active={location.pathname === '/maintenance'} />
+                    <NavItem icon={FileText} label="Action Items" />
                     <NavItem icon={Settings} label="Settings" />
                 </nav>
 
