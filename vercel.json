@@ -19,7 +19,7 @@
             "destination": "/server/index.js"
         },
         {
-            "source": "/(.*)",
+            "source": "/((?!assets/|favicon.ico|.*\\..*).*)",
             "destination": "/client/index.html"
         }
     ]
