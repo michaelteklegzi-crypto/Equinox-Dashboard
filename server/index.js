@@ -3,28 +3,19 @@ const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
-// const pgSession = require('connect-pg-simple')(session); // Removed for SQLite
-// const { Pool } = require('pg'); // Removed for SQLite
-
-const actionRoutes = require('./routes/actions');
-const userRoutes = require('./routes/users');
-const authRoutes = require('./routes/auth');
-const exportRoutes = require('./routes/export');
-const reportRoutes = require('./routes/report.routes'); // New
-const maintenanceRoutes = require('./routes/maintenance.routes'); // New
-const analyticsRoutes = require('./routes/analytics.routes'); // New
+// PostgreSQL connection for Session Store (Required for Vercel/Serverless)
+const pgSession = require('connect-pg-simple')(session);
+const { Pool } = require('pg');
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL connection pool removed
-/*
+// Connection pool for Session Store
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false } // Required for Supabase
 });
-*/
 
 app.use(cors({
     origin: function (origin, callback) {
@@ -48,14 +39,20 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Session middleware - switched to MemoryStore for local desktop app
+// Session middleware - Use PG Store in Production/Vercel
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
+    store: new pgSession({
+        pool: pool,
+        tableName: 'user_sessions', // Must create this table in DB
+        createTableIfMissing: true
+    }),
     secret: process.env.SESSION_SECRET || 'equinox-dashboard-secret-key-change-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // process.env.NODE_ENV === 'production', // False for local file/http
-        sameSite: 'lax', // process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: isProduction, // True in Vercel
+        sameSite: isProduction ? 'none' : 'lax', // None required for cross-site cookie if separate domains
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }

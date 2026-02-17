@@ -16,8 +16,14 @@ export default function Login() {
         e.preventDefault();
         setLoading(true);
         // Auto-login with Admin credentials for demo
-        await login('admin@equinox.com', '0987654321');
-        // Redirect handled by AuthContext/App
+        const result = await login('admin@equinox.com', '0987654321');
+
+        if (!result.success) {
+            setLoading(false);
+            console.error("Login failed:", result.error);
+            alert("Login failed. Please check your connection or database.");
+        }
+        // If success, Redirect handled by AuthContext/App
     };
 
     return (
