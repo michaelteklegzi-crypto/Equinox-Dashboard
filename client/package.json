@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@quixo3/prisma-session-store": "^3.1.19",
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
     "jspdf": "^4.1.0",

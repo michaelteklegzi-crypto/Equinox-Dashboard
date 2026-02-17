@@ -3,19 +3,12 @@ const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
-// PostgreSQL connection for Session Store (Required for Vercel/Serverless)
-const pgSession = require('connect-pg-simple')(session);
-const { Pool } = require('pg');
+// Prisma Session Store (Uses existing Prisma Client connection)
+const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
-
-// Connection pool for Session Store
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Required for Supabase
-});
 
 app.use(cors({
     origin: function (origin, callback) {
@@ -39,20 +32,23 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Session middleware - Use PG Store in Production/Vercel
+// Session middleware - Use Prisma Store
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
-    store: new pgSession({
-        pool: pool,
-        tableName: 'user_sessions', // Must create this table in DB
-        createTableIfMissing: true
-    }),
+    store: new PrismaSessionStore(
+        prisma,
+        {
+            checkPeriod: 2 * 60 * 1000,  // ms
+            dbRecordIdIsSessionId: true,
+            dbRecordIdFunction: undefined,
+        }
+    ),
     secret: process.env.SESSION_SECRET || 'equinox-dashboard-secret-key-change-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: isProduction, // True in Vercel
-        sameSite: isProduction ? 'none' : 'lax', // None required for cross-site cookie if separate domains
+        sameSite: isProduction ? 'none' : 'lax',
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
