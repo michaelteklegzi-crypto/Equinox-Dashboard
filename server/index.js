@@ -12,6 +12,7 @@ const authRoutes = require('./routes/auth');
 const exportRoutes = require('./routes/export');
 const reportRoutes = require('./routes/report.routes'); // New
 const maintenanceRoutes = require('./routes/maintenance.routes'); // New
+const analyticsRoutes = require('./routes/analytics.routes'); // New
 
 const app = express();
 const prisma = new PrismaClient();
@@ -75,6 +76,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/reports', reportRoutes); // New
 app.use('/api/maintenance', maintenanceRoutes); // New
+app.use('/api/analytics', analyticsRoutes); // New
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
