@@ -50,7 +50,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         secure: isProduction, // True in Vercel
-        sameSite: isProduction ? 'none' : 'lax',
+        sameSite: 'lax',
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
