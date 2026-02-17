@@ -34,3 +34,19 @@ yarn-error.log*
 
 # System Files
 Thumbs.db
+.DS_Store
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build
+dist/
+build/
+client/dist/
+server/dist/

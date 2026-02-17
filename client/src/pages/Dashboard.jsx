@@ -29,10 +29,24 @@ export default function Dashboard() {
                 axios.get('/api/actions', { params: filter }),
                 axios.get('/api/users')
             ]);
-            setActions(actionsRes.data);
-            setUsers(usersRes.data);
+
+            if (Array.isArray(actionsRes.data)) {
+                setActions(actionsRes.data);
+            } else {
+                console.error("Actions data is not an array:", actionsRes.data);
+                setActions([]);
+            }
+
+            if (Array.isArray(usersRes.data)) {
+                setUsers(usersRes.data);
+            } else {
+                console.error("Users data is not an array:", usersRes.data);
+                setUsers([]);
+            }
         } catch (error) {
             console.error("Failed to fetch data", error);
+            showToast('Failed to load dashboard data. using offline mode.', 'error');
+            setActions([]);
         } finally {
             setLoading(false);
         }

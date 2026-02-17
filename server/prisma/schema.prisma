@@ -15,16 +15,22 @@ model User {
   name              String
   email             String       @unique
   password          String       // Hashed password
-  role              String       @default("User") // 'Admin' | 'User'
+  role              String       @default("User") // 'Admin' | 'User' | 'Supervisor' | 'Clerk'
   mustChangePassword Boolean     @default(false)
   lastLogin         DateTime?
   createdAt         DateTime     @default(now())
   
   // Relations
   assignedActions ActionItem[] @relation("ResponsiblePerson")
-  createdActions  ActionItem[] @relation("CreatedBy")
+  createdActions  ActionItem[] @relation("ActionCreatedBy")
   createdNotes    Note[]
   auditLogs       AuditLog[]
+  
+  // New Relations
+  shiftReports    ShiftReport[]
+  dailyReports    DailyDrillingReport[]
+  maintenanceLogs MaintenanceLog[]
+  incidentReports IncidentReport[]
 }
 
 model ActionItem {
@@ -42,7 +48,7 @@ model ActionItem {
   responsiblePerson    User      @relation("ResponsiblePerson", fields: [responsiblePersonId], references: [id])
   
   createdById          String
-  createdBy            User      @relation("CreatedBy", fields: [createdById], references: [id])
+  createdBy            User      @relation("ActionCreatedBy", fields: [createdById], references: [id])
   
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -65,8 +71,12 @@ model Note {
 
 model AuditLog {
   id           String     @id @default(uuid())
-  actionItemId String
-  actionItem   ActionItem @relation(fields: [actionItemId], references: [id])
+  actionItemId String?
+  actionItem   ActionItem? @relation(fields: [actionItemId], references: [id])
+  
+  // Polymorphic-like relation support (optional, or just use string descriptions)
+  entityType   String?    // 'ActionItem', 'DailyReport', etc.
+  entityId     String?
   
   changedField String
   oldValue     String?
@@ -76,4 +86,109 @@ model AuditLog {
   changedBy    User       @relation(fields: [changedById], references: [id])
   
   changedAt    DateTime   @default(now())
+}
+
+// --- EQUINOX PHASE 1 MODELS ---
+
+model DailyDrillingReport {
+  id              String    @id @default(uuid())
+  reportDate      DateTime
+  rigId           String    // Logic link to a Rig (could be a model later)
+  location        String?
+  
+  // Production Metrics
+  startDepth      Float
+  endDepth        Float
+  totalDrilled    Float     // endDepth - startDepth
+  
+  status          String    @default("Draft") // 'Draft', 'Submitted', 'Approved'
+  
+  createdById     String
+  createdBy       User      @relation(fields: [createdById], references: [id])
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  drillingDepths  DrillingDepth[]
+  shiftReports    ShiftReport[]
+  downtimeLogs    DowntimeLog[]
+}
+
+model ShiftReport {
+  id              String    @id @default(uuid())
+  shiftType       String    // 'Day', 'Night'
+  date            DateTime
+  
+  dailyReportId   String
+  dailyReport     DailyDrillingReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+  
+  crewAssigned    String?   // JSON or Checkbox string of crew
+  supervisorName  String?
+  
+  notes           String?
+  
+  createdById     String
+  createdBy       User      @relation(fields: [createdById], references: [id])
+  
+  createdAt       DateTime  @default(now())
+}
+
+model DrillingDepth {
+  id              String    @id @default(uuid())
+  dailyReportId   String
+  dailyReport     DailyDrillingReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+  
+  timeStart       DateTime
+  timeEnd         DateTime
+  depthStart      Float
+  depthEnd        Float
+  activityCode    String?   // 'Drilling', 'Tripping', etc.
+  description     String?
+}
+
+model DowntimeLog {
+  id              String    @id @default(uuid())
+  dailyReportId   String?
+  dailyReport     DailyDrillingReport? @relation(fields: [dailyReportId], references: [id])
+  
+  category        String    // 'Mechanical', 'Operational', 'Weather', 'WaitingOnParts', 'Safety'
+  startTime       DateTime
+  endTime         DateTime?
+  durationHours   Float?
+  
+  description     String
+  equipmentId     String?   // Optional link to equipment
+  
+  createdAt       DateTime  @default(now())
+}
+
+model MaintenanceLog {
+  id              String    @id @default(uuid())
+  equipmentName   String
+  maintenanceType String    // 'Preventive', 'Corrective'
+  description     String
+  
+  cost            Float?
+  hoursSpent      Float?
+  
+  performedBy     String?
+  datePerformed   DateTime
+  
+  createdById     String
+  createdBy       User      @relation(fields: [createdById], references: [id])
+  
+  createdAt       DateTime  @default(now())
+}
+
+model IncidentReport {
+  id              String    @id @default(uuid())
+  incidentType    String    // 'Safety', 'Environmental', 'EquipmentDamage'
+  dateOccurred    DateTime
+  description     String
+  severity        String    // 'Low', 'Medium', 'High', 'Critical'
+  
+  reportedById    String
+  reportedBy      User      @relation(fields: [reportedById], references: [id])
+  
+  createdAt       DateTime  @default(now())
 }
