@@ -7,6 +7,8 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 
 const app = express();
+// Required for Vercel (behind proxy) to detect HTTPS
+app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
