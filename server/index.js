@@ -26,7 +26,8 @@ const analyticsRoutes = require('./routes/analytics.routes');
 
 const app = express();
 app.set('trust proxy', 1);
-const prisma = new PrismaClient();
+app.set('trust proxy', 1);
+const prisma = require('./db');
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({

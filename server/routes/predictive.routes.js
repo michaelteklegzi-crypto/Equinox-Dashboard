@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const ss = require('simple-statistics');
-const prisma = new PrismaClient();
+const ss = require('simple-statistics');
+const prisma = require('../db');
 
 // Helper: Calculate Rolling Average
 const calculateRollingAvg = (data, windowSize) => {
