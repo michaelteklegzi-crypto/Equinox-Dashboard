@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import axios from 'axios';
+import { useToast } from '../context/ToastContext';
 
 const DOWNTIME_CATEGORIES = [
     { value: '', label: 'None' },
@@ -15,6 +16,7 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
     const [rigs, setRigs] = useState([]);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(false);
+    const { showToast } = useToast();
     const [form, setForm] = useState({
         date: new Date().toISOString().split('T')[0],
         rigId: '',
@@ -48,9 +50,10 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
         setLoading(true);
         try {
             await axios.post('/api/drilling', form, { withCredentials: true });
+            showToast('Drilling entry submitted successfully', 'success');
             onSuccess();
         } catch (err) {
-            alert('Error: ' + (err.response?.data?.error || err.message));
+            showToast('Failed to submit entry: ' + (err.response?.data?.error || err.message), 'error');
         } finally {
             setLoading(false);
         }
@@ -62,7 +65,7 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#111827] border border-slate-800/50 shadow-2xl m-4">
+            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#111827] border border-slate-800/50 shadow-2xl m-4 scale-in">
                 {/* Header */}
                 <div className="sticky top-0 flex items-center justify-between p-6 border-b border-slate-800/50 bg-[#111827] rounded-t-2xl z-10">
                     <h2 className="text-lg font-bold text-white">New Drilling Entry</h2>

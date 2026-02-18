@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Activity, Wrench, BarChart3, Shield, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Activity, Wrench, BarChart3, Shield, LogOut, Menu, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -38,7 +38,7 @@ export default function Layout({ children }) {
             {/* Mobile toggle */}
             <button
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-slate-800 text-slate-300"
+                className="md:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-slate-800/80 backdrop-blur-sm text-slate-300 hover:text-white hover:bg-slate-700/80 transition-all shadow-lg shadow-black/20 btn-press"
             >
                 {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -107,13 +107,13 @@ export default function Layout({ children }) {
             {/* Mobile overlay */}
             {mobileOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-30 md:hidden"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden mobile-backdrop"
                     onClick={() => setMobileOpen(false)}
                 />
             )}
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto">
+            <main key={location.pathname} className="flex-1 overflow-y-auto page-enter">
                 {children}
             </main>
         </div>
@@ -125,12 +125,12 @@ function NavItem({ icon: Icon, label, active = false, to, onClick }) {
         <Link
             to={to}
             onClick={onClick}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${active
-                    ? 'bg-gradient-to-r from-orange-500/15 to-amber-500/10 text-orange-400 shadow-sm shadow-orange-500/5'
+            className={`sidebar-nav-item flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 btn-press ${active
+                    ? 'active bg-gradient-to-r from-orange-500/15 to-amber-500/10 text-orange-400 shadow-sm shadow-orange-500/5'
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
         >
-            <Icon className={`h-[18px] w-[18px] ${active ? 'text-orange-400' : ''}`} />
+            <Icon className={`h-[18px] w-[18px] transition-transform duration-200 ${active ? 'text-orange-400 scale-110' : ''}`} />
             {label}
         </Link>
     );

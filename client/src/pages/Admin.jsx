@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Drill, FolderOpen, DollarSign, Plus, Edit2, Trash2, Save, X, Check, Ban } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const TABS = [
     { key: 'users', label: 'Users', icon: Users },
@@ -58,6 +59,7 @@ function UserManagement() {
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Driller' });
+    const { showToast } = useToast();
 
     const fetchUsers = () => {
         axios.get('/api/users', { withCredentials: true })
@@ -73,11 +75,12 @@ function UserManagement() {
         setSaving(true);
         try {
             await axios.post('/api/auth/register', form, { withCredentials: true });
+            showToast(`User "${form.name}" created successfully`, 'success');
             setShowForm(false);
             setForm({ name: '', email: '', password: '', role: 'Driller' });
             fetchUsers();
         } catch (err) {
-            alert('Error: ' + (err.response?.data?.error || err.message));
+            showToast('Failed to create user: ' + (err.response?.data?.error || err.message), 'error');
         } finally {
             setSaving(false);
         }
@@ -378,6 +381,7 @@ function FinancialSettings() {
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({ scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '1.5', consumablesFactor: '1.0', laborCostFactor: '1.0' });
+    const { showToast } = useToast();
 
     const fetchAll = () => {
         Promise.all([
@@ -407,10 +411,11 @@ function FinancialSettings() {
             if (form.scope === 'project' && form.projectId) payload.projectId = form.projectId;
 
             await axios.post('/api/financial-params', payload, { withCredentials: true });
+            showToast('Financial parameter saved successfully', 'success');
             setShowForm(false);
             setForm({ scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '1.5', consumablesFactor: '1.0', laborCostFactor: '1.0' });
             fetchAll();
-        } catch (err) { alert('Error: ' + (err.response?.data?.error || err.message)); }
+        } catch (err) { showToast('Failed to save parameter: ' + (err.response?.data?.error || err.message), 'error'); }
         finally { setSaving(false); }
     };
 
@@ -511,7 +516,7 @@ function FinancialSettings() {
                                     <td className="px-5 py-4">
                                         <span className="text-white font-medium">{p.rig?.name || p.project?.name || 'Global'}</span>
                                         <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${!p.rigId && !p.projectId ? 'bg-emerald-500/15 text-emerald-400' :
-                                                p.rigId ? 'bg-blue-500/15 text-blue-400' : 'bg-purple-500/15 text-purple-400'
+                                            p.rigId ? 'bg-blue-500/15 text-blue-400' : 'bg-purple-500/15 text-purple-400'
                                             }`}>{!p.rigId && !p.projectId ? 'Global' : p.rigId ? 'Rig' : 'Project'}</span>
                                     </td>
                                     <td className="px-5 py-4 text-right text-orange-400 font-semibold">${p.costPerMeter}</td>
