@@ -1,4 +1,13 @@
 require('dotenv').config();
+
+// Fallback env vars for Vercel (env var UI not saving correctly)
+if (!process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = "postgresql://postgres:vTVJMQpzq4XheAWF@db.zwdupsecfokebveprnyr.supabase.co:5432/postgres";
+}
+if (!process.env.SESSION_SECRET) {
+    process.env.SESSION_SECRET = "equinox-dashboard-secret-change-in-production";
+}
+
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
