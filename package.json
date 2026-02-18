@@ -3,8 +3,25 @@
     "version": "1.0.0",
     "description": "Equinox Dashboard - Desktop Application",
     "main": "electron/main.js",
+    "devDependencies": {
+        "electron": "^28.1.0",
+        "electron-builder": "^24.9.1",
+        "prisma": "5.22.0"
+    },
+    "dependencies": {
+        "electron-store": "^8.1.0",
+        "@prisma/client": "5.22.0",
+        "@quixo3/prisma-session-store": "^3.1.19",
+        "bcrypt": "^6.0.0",
+        "cors": "^2.8.6",
+        "dotenv": "^17.2.4",
+        "express": "^5.2.1",
+        "express-session": "^1.19.0",
+        "nodemailer": "^8.0.1",
+        "pg": "^8.18.0"
+    },
     "scripts": {
-        "postinstall": "cd client && npm install && cd ../server && npm install",
+        "postinstall": "cd client && npm install && npx prisma generate --schema=server/prisma/schema.prisma",
         "build:client": "cd client && npm run build",
         "electron:dev": "electron .",
         "electron:build": "npm run build:client && electron-builder",
@@ -12,72 +29,5 @@
         "electron:build:mac": "npm run build:client && electron-builder --mac",
         "electron:build:linux": "npm run build:client && electron-builder --linux",
         "electron:build:all": "npm run build:client && electron-builder -mwl"
-    },
-    "build": {
-        "appId": "com.equinox.dashboard",
-        "productName": "Equinox Dashboard",
-        "directories": {
-            "output": "dist",
-            "buildResources": "build"
-        },
-        "files": [
-            "electron/**/*",
-            "client/dist/**/*",
-            "server/**/*",
-            "!server/node_modules/**/*",
-            "!server/dev.db",
-            "!server/prisma/dev.db"
-        ],
-        "extraResources": [
-            {
-                "from": "server/prisma/schema.prisma",
-                "to": "server/prisma/schema.prisma"
-            },
-            {
-                "from": "server/prisma/dev.db",
-                "to": "server/prisma/seed.db"
-            }
-        ],
-        "win": {
-            "target": [
-                "nsis"
-            ],
-            "icon": "build/icon.ico"
-        },
-        "mac": {
-            "target": [
-                "dmg"
-            ],
-            "icon": "build/icon.icns",
-            "category": "public.app-category.business"
-        },
-        "linux": {
-            "target": [
-                "AppImage"
-            ],
-            "icon": "build/icon.png",
-            "category": "Office"
-        },
-        "nsis": {
-            "oneClick": false,
-            "allowToChangeInstallationDirectory": true,
-            "createDesktopShortcut": true,
-            "createStartMenuShortcut": true
-        }
-    },
-    "keywords": [
-        "equinox",
-        "dashboard",
-        "actions",
-        "management"
-    ],
-    "author": "Equinox",
-    "license": "ISC",
-    "devDependencies": {
-        "electron": "^28.1.0",
-        "electron-builder": "^24.9.1"
-    },
-    "dependencies": {
-        "electron-store": "^8.1.0"
     }
 }
