@@ -57,27 +57,37 @@ app.get('/api/health-check', async (req, res) => {
     }
 });
 
-// Session middleware - TEMPORARILY DISABLED FOR DEBUGGING
-// const isProduction = process.env.NODE_ENV === 'production';
-// app.use(session({
-//     store: new PrismaSessionStore(
-//         prisma,
-//         {
-//             checkPeriod: 2 * 60 * 1000,  // ms
-//             dbRecordIdIsSessionId: true,
-//             dbRecordIdFunction: undefined,
-//         }
-//     ),
-//     secret: process.env.SESSION_SECRET || 'equinox-dashboard-secret-key-change-in-production',
-//     resave: false,
-//     saveUninitialized: false,
-//     cookie: {
-//         secure: isProduction, // True in Vercel
-//         sameSite: 'lax',
-//         httpOnly: true,
-//         maxAge: 24 * 60 * 60 * 1000 // 24 hours
-//     }
-// }));
+// Session middleware - Use Prisma Store
+const isProduction = process.env.NODE_ENV === 'production';
+app.use(session({
+    store: new PrismaSessionStore(
+        prisma,
+        {
+            checkPeriod: 2 * 60 * 1000,  // ms
+            dbRecordIdIsSessionId: true,
+            dbRecordIdFunction: undefined,
+        }
+    ),
+    secret: process.env.SESSION_SECRET || 'equinox-dashboard-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: isProduction, // True in Vercel
+        sameSite: 'lax',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Simple Health Check (No DB) - To verify Server Start
+app.get('/api/ping', (req, res) => {
+    res.json({
+        status: 'pong',
+        message: 'Server is running',
+        hasDbUrl: !!process.env.DATABASE_URL,
+        nodeEnv: process.env.NODE_ENV
+    });
+});
 
 
 app.get('/', (req, res) => {
