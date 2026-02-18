@@ -3,179 +3,359 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Get KPI Stats (Total Depth, Active Rigs, NPT, Incidents)
-router.get('/kpi', async (req, res) => {
+// ============ PRODUCTION ANALYTICS ============
+router.get('/production', async (req, res) => {
     try {
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+        const { startDate, endDate, rigId, projectId } = req.query;
+        const where = {};
+        if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
+        if (endDate) where.date = { ...where.date, lte: new Date(endDate) };
+        if (rigId) where.rigId = rigId;
+        if (projectId) where.projectId = projectId;
 
-        // 1. Total Depth Drilled (All Time vs Today)
-        const totalDepthAgg = await prisma.dailyDrillingReport.aggregate({
-            _sum: { totalDrilled: true }
+        // Overall aggregates
+        const totals = await prisma.drillingEntry.aggregate({
+            where,
+            _sum: { metersDrilled: true, nptHours: true, fuelConsumed: true, consumablesCost: true },
+            _avg: { metersDrilled: true },
+            _count: true,
         });
 
-        const todayDepthAgg = await prisma.dailyDrillingReport.aggregate({
-            where: {
-                reportDate: {
-                    gte: startOfDay,
-                    lte: endOfDay
-                }
-            },
-            _sum: { totalDrilled: true }
-        });
-
-        // 2. Active Rigs (Unique Rigs with reports today)
-        const activeRigsCount = await prisma.dailyDrillingReport.groupBy({
+        // Per-rig breakdown
+        const byRig = await prisma.drillingEntry.groupBy({
             by: ['rigId'],
-            where: {
-                reportDate: {
-                    gte: startOfDay,
-                    lte: endOfDay
-                }
-            }
+            where,
+            _sum: { metersDrilled: true, nptHours: true, fuelConsumed: true },
+            _avg: { metersDrilled: true },
+            _count: true,
         });
 
-        // 3. NPT (Non-Productive Time) - Total Hours from Downtime Logs
-        const nptAgg = await prisma.downtimeLog.aggregate({
-            _sum: { durationHours: true }
+        // Enrich with rig names
+        const rigs = await prisma.rig.findMany({ select: { id: true, name: true, type: true } });
+        const rigMap = Object.fromEntries(rigs.map(r => [r.id, r]));
+        const rigBreakdown = byRig.map(r => ({
+            rigId: r.rigId,
+            rigName: rigMap[r.rigId]?.name || 'Unknown',
+            rigType: rigMap[r.rigId]?.type || '—',
+            totalMeters: r._sum.metersDrilled || 0,
+            avgMeters: Math.round(r._avg.metersDrilled || 0),
+            totalNpt: r._sum.nptHours || 0,
+            totalFuel: r._sum.fuelConsumed || 0,
+            entries: r._count,
+        }));
+
+        // Per-project breakdown
+        const byProject = await prisma.drillingEntry.groupBy({
+            by: ['projectId'],
+            where,
+            _sum: { metersDrilled: true, consumablesCost: true },
+            _count: true,
         });
+        const projects = await prisma.project.findMany({ select: { id: true, name: true, clientName: true } });
+        const projMap = Object.fromEntries(projects.map(p => [p.id, p]));
+        const projectBreakdown = byProject.map(p => ({
+            projectId: p.projectId,
+            projectName: projMap[p.projectId]?.name || 'Unknown',
+            clientName: projMap[p.projectId]?.clientName || '—',
+            totalMeters: p._sum.metersDrilled || 0,
+            totalConsumables: p._sum.consumablesCost || 0,
+            entries: p._count,
+        }));
 
-        // 4. Safety Incidents (Last 30 Days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        const incidentsCount = await prisma.incidentReport.count({
-            where: {
-                dateOccurred: { gte: thirtyDaysAgo }
-            }
+        // Daily trend
+        const entries = await prisma.drillingEntry.findMany({
+            where,
+            select: { date: true, metersDrilled: true, nptHours: true },
+            orderBy: { date: 'asc' },
         });
-
-        // 5. Enterprise Financials & Fuel
-        const financialsAgg = await prisma.dailyDrillingReport.aggregate({
-            where: {
-                reportDate: {
-                    gte: startOfDay,
-                    lte: endOfDay
-                }
-            },
-            _sum: {
-                dailyCost: true,
-                fuelConsumed: true
-            }
+        const dailyMap = {};
+        entries.forEach(e => {
+            const d = new Date(e.date).toISOString().split('T')[0];
+            if (!dailyMap[d]) dailyMap[d] = { date: d, meters: 0, npt: 0 };
+            dailyMap[d].meters += e.metersDrilled;
+            dailyMap[d].npt += e.nptHours || 0;
         });
 
         res.json({
-            totalDepth: totalDepthAgg._sum.totalDrilled || 0,
-            todayDepth: todayDepthAgg._sum.totalDrilled || 0,
-            activeRigs: activeRigsCount.length,
-            nptHours: nptAgg._sum.durationHours || 0,
-            recentIncidents: incidentsCount,
-            dailyCost: financialsAgg._sum.dailyCost || 0,
-            fuelConsumed: financialsAgg._sum.fuelConsumed || 0
+            totals: {
+                totalMeters: totals._sum.metersDrilled || 0,
+                totalNpt: totals._sum.nptHours || 0,
+                totalFuel: totals._sum.fuelConsumed || 0,
+                totalConsumables: totals._sum.consumablesCost || 0,
+                avgMetersPerEntry: Math.round(totals._avg.metersDrilled || 0),
+                totalEntries: totals._count,
+            },
+            rigBreakdown,
+            projectBreakdown,
+            dailyTrend: Object.values(dailyMap),
         });
-
     } catch (error) {
-        console.error('KPI Error:', error);
-        res.status(500).json({ error: 'Failed to fetch KPI stats' });
+        console.error('Production analytics error:', error);
+        res.status(500).json({ error: 'Failed to fetch production analytics' });
     }
 });
 
-// Get Fleet Overview (Rig by Rig Performance for Last 30 Days)
-router.get('/fleet', async (req, res) => {
+// ============ DOWNTIME ANALYTICS ============
+router.get('/downtime', async (req, res) => {
+    try {
+        const { startDate, endDate, rigId, projectId } = req.query;
+        const where = {};
+        if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
+        if (endDate) where.date = { ...where.date, lte: new Date(endDate) };
+        if (rigId) where.rigId = rigId;
+        if (projectId) where.projectId = projectId;
+        where.nptHours = { gt: 0 };
+
+        // Category breakdown
+        const byCat = await prisma.drillingEntry.groupBy({
+            by: ['downtimeCategory'],
+            where: { ...where, downtimeCategory: { not: null } },
+            _sum: { nptHours: true },
+            _count: true,
+        });
+
+        const categoryBreakdown = byCat.map(c => ({
+            category: c.downtimeCategory || 'Unclassified',
+            hours: c._sum.nptHours || 0,
+            count: c._count,
+        }));
+
+        // Per-rig NPT
+        const byRig = await prisma.drillingEntry.groupBy({
+            by: ['rigId'],
+            where,
+            _sum: { nptHours: true },
+            _count: true,
+        });
+        const rigs = await prisma.rig.findMany({ select: { id: true, name: true } });
+        const rigMap = Object.fromEntries(rigs.map(r => [r.id, r]));
+        const rigNpt = byRig.map(r => ({
+            rigName: rigMap[r.rigId]?.name || 'Unknown',
+            hours: r._sum.nptHours || 0,
+            incidents: r._count,
+        }));
+
+        // Total from DowntimeLog table as well
+        const downtimeWhere = {};
+        if (startDate) downtimeWhere.startTime = { gte: new Date(startDate) };
+        if (endDate) downtimeWhere.endTime = { lte: new Date(endDate) };
+        if (rigId) downtimeWhere.rigId = rigId;
+
+        const downtimeLogs = await prisma.downtimeLog.groupBy({
+            by: ['category'],
+            where: downtimeWhere,
+            _sum: { durationHours: true },
+            _count: true,
+        }).catch(() => []);
+
+        res.json({
+            categoryBreakdown,
+            rigNpt,
+            downtimeLogs: downtimeLogs.map(d => ({
+                category: d.category,
+                hours: d._sum.durationHours || 0,
+                count: d._count,
+            })),
+        });
+    } catch (error) {
+        console.error('Downtime analytics error:', error);
+        res.status(500).json({ error: 'Failed to fetch downtime analytics' });
+    }
+});
+
+// ============ FINANCIAL ANALYTICS ============
+router.get('/financial', async (req, res) => {
+    try {
+        const { startDate, endDate, rigId, projectId } = req.query;
+        const where = {};
+        if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
+        if (endDate) where.date = { ...where.date, lte: new Date(endDate) };
+        if (rigId) where.rigId = rigId;
+        if (projectId) where.projectId = projectId;
+
+        const totals = await prisma.drillingEntry.aggregate({
+            where,
+            _sum: { metersDrilled: true, fuelConsumed: true, consumablesCost: true },
+            _count: true,
+        });
+
+        // Per-rig cost
+        const byRig = await prisma.drillingEntry.groupBy({
+            by: ['rigId'],
+            where,
+            _sum: { metersDrilled: true, fuelConsumed: true, consumablesCost: true },
+            _count: true,
+        });
+        const rigs = await prisma.rig.findMany({ select: { id: true, name: true } });
+        const rigMap = Object.fromEntries(rigs.map(r => [r.id, r]));
+
+        // Get financial params for revenue estimation
+        const params = await prisma.financialParam.findMany();
+        const globalParam = params.find(p => !p.rigId && !p.projectId);
+
+        const totalMeters = totals._sum.metersDrilled || 0;
+        const totalFuel = totals._sum.fuelConsumed || 0;
+        const totalConsumables = totals._sum.consumablesCost || 0;
+        const costPerMeter = globalParam?.costPerMeter || 0;
+        const fuelCostFactor = globalParam?.fuelCostFactor || 1.5; // $/L default
+        const estimatedRevenue = totalMeters * costPerMeter;
+        const estimatedFuelCost = totalFuel * fuelCostFactor;
+        const totalCost = estimatedFuelCost + totalConsumables;
+
+        res.json({
+            totals: {
+                totalMeters,
+                totalFuel,
+                totalConsumables,
+                estimatedRevenue,
+                estimatedFuelCost,
+                totalCost,
+                margin: estimatedRevenue > 0 ? ((estimatedRevenue - totalCost) / estimatedRevenue * 100).toFixed(1) : 0,
+                costPerMeter: totalMeters > 0 ? (totalCost / totalMeters).toFixed(2) : 0,
+                fuelPerMeter: totalMeters > 0 ? (totalFuel / totalMeters).toFixed(2) : 0,
+            },
+            rigBreakdown: byRig.map(r => ({
+                rigName: rigMap[r.rigId]?.name || 'Unknown',
+                meters: r._sum.metersDrilled || 0,
+                fuel: r._sum.fuelConsumed || 0,
+                consumables: r._sum.consumablesCost || 0,
+                fuelCost: (r._sum.fuelConsumed || 0) * fuelCostFactor,
+            })),
+        });
+    } catch (error) {
+        console.error('Financial analytics error:', error);
+        res.status(500).json({ error: 'Failed to fetch financial analytics' });
+    }
+});
+
+// ============ MAINTENANCE ANALYTICS ============
+router.get('/maintenance', async (req, res) => {
+    try {
+        const { startDate, endDate, rigId } = req.query;
+        const where = {};
+        if (startDate) where.date = { gte: new Date(startDate) };
+        if (endDate) where.date = { lte: new Date(endDate) };
+        if (rigId) where.rigId = rigId;
+
+        const logs = await prisma.maintenanceLog.findMany({
+            where,
+            include: { rig: { select: { name: true } } },
+            orderBy: { date: 'desc' },
+            take: 100,
+        });
+
+        // Per-rig maintenance frequency
+        const rigFreq = {};
+        logs.forEach(l => {
+            const name = l.rig?.name || 'Unknown';
+            if (!rigFreq[name]) rigFreq[name] = { name, count: 0, totalCost: 0 };
+            rigFreq[name].count += 1;
+            rigFreq[name].totalCost += l.cost || 0;
+        });
+
+        res.json({
+            totalLogs: logs.length,
+            recentLogs: logs.slice(0, 20).map(l => ({
+                id: l.id,
+                rig: l.rig?.name,
+                type: l.type,
+                description: l.description,
+                cost: l.cost,
+                date: l.date,
+            })),
+            rigFrequency: Object.values(rigFreq),
+        });
+    } catch (error) {
+        console.error('Maintenance analytics error:', error);
+        res.status(500).json({ error: 'Failed to fetch maintenance analytics' });
+    }
+});
+
+// ============ EXECUTIVE SUMMARY ============
+router.get('/executive', async (req, res) => {
     try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // Fetch all rigs
-        const rigs = await prisma.rig.findMany({
-            orderBy: { name: 'asc' },
-            include: {
-                dailyReports: {
-                    where: { reportDate: { gte: thirtyDaysAgo } },
-                    select: { totalDrilled: true, dailyCost: true }
-                }
-            }
+        const [totals, activeRigs, incidents, recentEntries] = await Promise.all([
+            prisma.drillingEntry.aggregate({
+                where: { date: { gte: thirtyDaysAgo } },
+                _sum: { metersDrilled: true, nptHours: true, fuelConsumed: true, consumablesCost: true },
+                _count: true,
+            }),
+            prisma.rig.count({ where: { status: 'Active' } }),
+            prisma.incidentReport.count({ where: { dateOccurred: { gte: thirtyDaysAgo } } }),
+            prisma.drillingEntry.findMany({
+                where: { date: { gte: thirtyDaysAgo } },
+                orderBy: { date: 'desc' },
+                take: 5,
+                include: { rig: { select: { name: true } }, project: { select: { name: true } } },
+            }),
+        ]);
+
+        res.json({
+            period: 'Last 30 Days',
+            totalMeters: totals._sum.metersDrilled || 0,
+            totalNpt: totals._sum.nptHours || 0,
+            totalFuel: totals._sum.fuelConsumed || 0,
+            totalConsumables: totals._sum.consumablesCost || 0,
+            totalEntries: totals._count,
+            activeRigs,
+            recentIncidents: incidents,
+            avgMetersPerDay: totals._count > 0 ? Math.round((totals._sum.metersDrilled || 0) / 30) : 0,
+            recentEntries: recentEntries.map(e => ({
+                date: e.date,
+                rig: e.rig?.name,
+                project: e.project?.name,
+                meters: e.metersDrilled,
+                shift: e.shift,
+            })),
         });
-
-        // Calculate aggregates for each rig
-        const fleetData = rigs.map(rig => {
-            const totalDepth = rig.dailyReports.reduce((sum, r) => sum + r.totalDrilled, 0);
-            const totalCost = rig.dailyReports.reduce((sum, r) => sum + (r.dailyCost || 0), 0);
-            const daysReported = rig.dailyReports.length || 1;
-
-            return {
-                id: rig.id,
-                name: rig.name,
-                site: rig.site,
-                type: rig.type,
-                status: rig.status,
-                totalDepth: totalDepth,
-                avgRop: (totalDepth / daysReported).toFixed(1), // Simplified ROP (m/day)
-                totalCost: totalCost
-            };
-        });
-
-        res.json(fleetData);
     } catch (error) {
-        console.error("Fleet API Error:", error);
-        res.status(500).json({ error: "Failed to fetch fleet data" });
+        console.error('Executive summary error:', error);
+        res.status(500).json({ error: 'Failed to fetch executive summary' });
     }
 });
 
-// Get Chart Data: Drilling Progress (Depth vs Date)
-router.get('/charts/depth', async (req, res) => {
+// ============ EXPORT: CSV ============
+router.get('/export/csv', async (req, res) => {
     try {
-        // Fetch last 30 days of reports
-        const stats = await prisma.dailyDrillingReport.findMany({
-            orderBy: { reportDate: 'asc' },
-            select: {
-                reportDate: true,
-                totalDrilled: true
-            },
-            // Take enough to cover 12 rigs * 30 days
-            take: 400
+        const { startDate, endDate, rigId, projectId } = req.query;
+        const where = {};
+        if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
+        if (endDate) where.date = { ...where.date, lte: new Date(endDate) };
+        if (rigId) where.rigId = rigId;
+        if (projectId) where.projectId = projectId;
+
+        const entries = await prisma.drillingEntry.findMany({
+            where,
+            include: { rig: { select: { name: true } }, project: { select: { name: true } } },
+            orderBy: { date: 'desc' },
         });
 
-        // Group by Date
-        const grouped = stats.reduce((acc, curr) => {
-            const dateStr = new Date(curr.reportDate).toLocaleDateString();
-            if (!acc[dateStr]) acc[dateStr] = 0;
-            acc[dateStr] += curr.totalDrilled;
-            return acc;
-        }, {});
+        const headers = ['Date', 'Rig', 'Project', 'Shift', 'Meters Drilled', 'NPT Hours', 'Downtime Category', 'Fuel (L)', 'Consumables ($)', 'Supervisor', 'Remarks'];
+        const rows = entries.map(e => [
+            new Date(e.date).toISOString().split('T')[0],
+            e.rig?.name || '',
+            e.project?.name || '',
+            e.shift,
+            e.metersDrilled,
+            e.nptHours || 0,
+            e.downtimeCategory || '',
+            e.fuelConsumed || 0,
+            e.consumablesCost || 0,
+            e.supervisorName || '',
+            (e.remarks || '').replace(/"/g, '""'),
+        ]);
 
-        // Format for Recharts
-        const chartData = Object.keys(grouped).map(date => ({
-            date,
-            depth: grouped[date]
-        }));
+        const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
 
-        res.json(chartData);
-
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=drilling-report-${new Date().toISOString().split('T')[0]}.csv`);
+        res.send(csv);
     } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get Chart Data: Downtime by Category
-router.get('/charts/downtime', async (req, res) => {
-    try {
-        const downtime = await prisma.downtimeLog.groupBy({
-            by: ['category'],
-            _sum: {
-                durationHours: true
-            }
-        });
-
-        const chartData = downtime.map(item => ({
-            name: item.category,
-            value: item._sum.durationHours || 0
-        }));
-
-        res.json(chartData);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('CSV export error:', error);
+        res.status(500).json({ error: 'Failed to export CSV' });
     }
 });
 

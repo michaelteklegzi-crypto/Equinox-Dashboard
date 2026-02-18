@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Calendar, ArrowRight, Download, TrendingUp, Clock, DollarSign, Wrench } from 'lucide-react';
+import { TrendingUp, Clock, DollarSign, Wrench, Download, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
 import axios from 'axios';
 
@@ -13,16 +13,14 @@ const TABS = [
 
 export default function Analytics() {
     const [tab, setTab] = useState('production');
-    const [entries, setEntries] = useState([]);
     const [rigs, setRigs] = useState([]);
     const [projects, setProjects] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({
-        startDate: '',
-        endDate: '',
-        rigId: '',
-        projectId: '',
-    });
+    const [filters, setFilters] = useState({ startDate: '', endDate: '', rigId: '', projectId: '' });
+    const [prodData, setProdData] = useState(null);
+    const [dtData, setDtData] = useState(null);
+    const [finData, setFinData] = useState(null);
+    const [maintData, setMaintData] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         Promise.all([
@@ -31,70 +29,57 @@ export default function Analytics() {
         ]).then(([r, p]) => { setRigs(r.data); setProjects(p.data); });
     }, []);
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams();
-            if (filters.startDate) params.append('startDate', filters.startDate);
-            if (filters.endDate) params.append('endDate', filters.endDate);
-            if (filters.rigId) params.append('rigId', filters.rigId);
-            if (filters.projectId) params.append('projectId', filters.projectId);
-            params.append('limit', '500');
-            const res = await axios.get(`/api/drilling?${params}`, { withCredentials: true });
-            setEntries(res.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+    const buildParams = () => {
+        const params = new URLSearchParams();
+        if (filters.startDate) params.append('startDate', filters.startDate);
+        if (filters.endDate) params.append('endDate', filters.endDate);
+        if (filters.rigId) params.append('rigId', filters.rigId);
+        if (filters.projectId) params.append('projectId', filters.projectId);
+        return params.toString();
     };
 
-    useEffect(() => { fetchData(); }, [filters]);
+    const fetchTab = async (t) => {
+        setLoading(true);
+        try {
+            const q = buildParams();
+            if (t === 'production') {
+                const res = await axios.get(`/api/analytics/production?${q}`, { withCredentials: true });
+                setProdData(res.data);
+            } else if (t === 'downtime') {
+                const res = await axios.get(`/api/analytics/downtime?${q}`, { withCredentials: true });
+                setDtData(res.data);
+            } else if (t === 'financial') {
+                const res = await axios.get(`/api/analytics/financial?${q}`, { withCredentials: true });
+                setFinData(res.data);
+            } else if (t === 'maintenance') {
+                const res = await axios.get(`/api/analytics/maintenance?${q}`, { withCredentials: true });
+                setMaintData(res.data);
+            }
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchTab(tab); }, [tab, filters]);
+
+    const handleExportCSV = () => {
+        const q = buildParams();
+        window.open(`/api/analytics/export/csv?${q}`, '_blank');
+    };
 
     const selectClass = "px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50";
 
-    // Data aggregations
-    const totalMeters = entries.reduce((s, e) => s + e.metersDrilled, 0);
-    const totalNpt = entries.reduce((s, e) => s + (e.nptHours || 0), 0);
-    const totalFuel = entries.reduce((s, e) => s + (e.fuelConsumed || 0), 0);
-    const totalConsumables = entries.reduce((s, e) => s + (e.consumablesCost || 0), 0);
-
-    // Per-rig aggregation
-    const rigAgg = {};
-    entries.forEach(e => {
-        const name = e.rig?.name || 'Unknown';
-        if (!rigAgg[name]) rigAgg[name] = { name, meters: 0, npt: 0, fuel: 0, entries: 0 };
-        rigAgg[name].meters += e.metersDrilled;
-        rigAgg[name].npt += e.nptHours || 0;
-        rigAgg[name].fuel += e.fuelConsumed || 0;
-        rigAgg[name].entries += 1;
-    });
-    const rigData = Object.values(rigAgg);
-
-    // Downtime breakdown
-    const dtAgg = {};
-    entries.filter(e => e.downtimeCategory).forEach(e => {
-        if (!dtAgg[e.downtimeCategory]) dtAgg[e.downtimeCategory] = { name: e.downtimeCategory, hours: 0, count: 0 };
-        dtAgg[e.downtimeCategory].hours += e.nptHours || 0;
-        dtAgg[e.downtimeCategory].count += 1;
-    });
-    const dtData = Object.values(dtAgg);
-
-    // Daily trend
-    const dailyAgg = {};
-    entries.forEach(e => {
-        const d = new Date(e.date).toLocaleDateString();
-        if (!dailyAgg[d]) dailyAgg[d] = { date: d, meters: 0, npt: 0 };
-        dailyAgg[d].meters += e.metersDrilled;
-        dailyAgg[d].npt += e.nptHours || 0;
-    });
-    const dailyData = Object.values(dailyAgg).reverse();
-
     return (
         <div className="p-6 md:p-8 space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
-                <p className="text-sm text-slate-500 mt-1">Fleet performance intelligence</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
+                    <p className="text-sm text-slate-500 mt-1">Fleet performance intelligence</p>
+                </div>
+                <button onClick={handleExportCSV}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-300 text-sm font-medium hover:bg-slate-700/60 transition-all">
+                    <Download className="h-4 w-4" />
+                    Export CSV
+                </button>
             </div>
 
             {/* Filters */}
@@ -126,144 +111,245 @@ export default function Analytics() {
             {/* Tabs */}
             <div className="flex gap-1 p-1 rounded-xl bg-slate-800/30 w-fit">
                 {TABS.map(t => (
-                    <button
-                        key={t.key}
-                        onClick={() => setTab(t.key)}
+                    <button key={t.key} onClick={() => setTab(t.key)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-orange-500/15 text-orange-400' : 'text-slate-500 hover:text-slate-300'
-                            }`}
-                    >
-                        <t.icon className="h-4 w-4" />
-                        {t.label}
+                            }`}>
+                        <t.icon className="h-4 w-4" /> {t.label}
                     </button>
                 ))}
             </div>
 
-            {/* Content */}
+            {/* Loading */}
             {loading ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {[1, 2, 3, 4].map(i => <div key={i} className="h-72 bg-slate-800/30 rounded-2xl animate-pulse" />)}
                 </div>
             ) : (
                 <>
-                    {tab === 'production' && (
-                        <div className="space-y-6">
-                            {/* Summary cards */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <SummaryCard label="Total Meters" value={`${totalMeters.toLocaleString()}m`} />
-                                <SummaryCard label="Avg / Entry" value={`${entries.length ? Math.round(totalMeters / entries.length) : 0}m`} />
-                                <SummaryCard label="Total Entries" value={entries.length} />
-                                <SummaryCard label="Best Rig" value={rigData.sort((a, b) => b.meters - a.meters)[0]?.name || '—'} />
-                            </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <ChartCard title="Meters by Rig">
-                                    <ResponsiveContainer width="100%" height={280}>
-                                        <BarChart data={rigData} barSize={32}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' }} />
-                                            <Bar dataKey="meters" fill="#f97316" radius={[6, 6, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </ChartCard>
-                                <ChartCard title="Production Trend">
-                                    <ResponsiveContainer width="100%" height={280}>
-                                        <LineChart data={dailyData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} />
-                                            <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' }} />
-                                            <Line type="monotone" dataKey="meters" stroke="#f97316" strokeWidth={2} dot={{ fill: '#f97316', r: 3 }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </ChartCard>
-                            </div>
-                        </div>
-                    )}
-                    {tab === 'downtime' && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <SummaryCard label="Total NPT" value={`${totalNpt.toFixed(1)} hrs`} />
-                                <SummaryCard label="NPT %" value={`${entries.length ? ((totalNpt / (entries.length * 12)) * 100).toFixed(1) : 0}%`} />
-                                <SummaryCard label="Categories" value={dtData.length} />
-                                <SummaryCard label="Worst Category" value={dtData.sort((a, b) => b.hours - a.hours)[0]?.name || '—'} />
-                            </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <ChartCard title="Downtime by Category">
-                                    {dtData.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height={280}>
-                                            <PieChart>
-                                                <Pie data={dtData} dataKey="hours" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                                                    {dtData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                                </Pie>
-                                                <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' }} />
-                                                <Legend wrapperStyle={{ color: '#94a3b8' }} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    ) : <EmptyState />}
-                                </ChartCard>
-                                <ChartCard title="NPT Trend">
-                                    <ResponsiveContainer width="100%" height={280}>
-                                        <LineChart data={dailyData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} />
-                                            <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' }} />
-                                            <Line type="monotone" dataKey="npt" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444', r: 3 }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </ChartCard>
-                            </div>
-                        </div>
-                    )}
-                    {tab === 'financial' && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <SummaryCard label="Total Fuel" value={`${totalFuel.toLocaleString()} L`} />
-                                <SummaryCard label="Total Consumables" value={`$${totalConsumables.toLocaleString()}`} />
-                                <SummaryCard label="Fuel/Meter" value={totalMeters > 0 ? `${(totalFuel / totalMeters).toFixed(1)} L/m` : '—'} />
-                                <SummaryCard label="Consumables/Meter" value={totalMeters > 0 ? `$${(totalConsumables / totalMeters).toFixed(2)}/m` : '—'} />
-                            </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <ChartCard title="Fuel Consumption by Rig">
-                                    <ResponsiveContainer width="100%" height={280}>
-                                        <BarChart data={rigData} barSize={32}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' }} />
-                                            <Bar dataKey="fuel" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </ChartCard>
-                                <ChartCard title="Cost per Meter by Rig">
-                                    <ResponsiveContainer width="100%" height={280}>
-                                        <BarChart data={rigData.map(r => ({ ...r, costPerMeter: r.meters > 0 ? (r.fuel * 1.5 / r.meters).toFixed(2) : 0 }))} barSize={32}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' }} />
-                                            <Bar dataKey="costPerMeter" fill="#10b981" radius={[6, 6, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </ChartCard>
-                            </div>
-                        </div>
-                    )}
-                    {tab === 'maintenance' && (
-                        <div className="text-center py-20">
-                            <Wrench className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-slate-400">Maintenance Analytics</h3>
-                            <p className="text-sm text-slate-600 mt-2">MTBF & MTTR metrics will populate as maintenance logs are added</p>
-                        </div>
-                    )}
+                    {tab === 'production' && prodData && <ProductionTab data={prodData} />}
+                    {tab === 'downtime' && dtData && <DowntimeTab data={dtData} />}
+                    {tab === 'financial' && finData && <FinancialTab data={finData} />}
+                    {tab === 'maintenance' && maintData && <MaintenanceTab data={maintData} />}
                 </>
             )}
         </div>
     );
 }
 
-function SummaryCard({ label, value }) {
+// ============ PRODUCTION TAB ============
+function ProductionTab({ data }) {
+    const { totals, rigBreakdown, projectBreakdown, dailyTrend } = data;
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <KPI label="Total Meters" value={`${totals.totalMeters.toLocaleString()}m`} />
+                <KPI label="Avg / Entry" value={`${totals.avgMetersPerEntry}m`} />
+                <KPI label="Total Entries" value={totals.totalEntries} />
+                <KPI label="Best Rig" value={rigBreakdown.sort((a, b) => b.totalMeters - a.totalMeters)[0]?.rigName || '—'} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChartCard title="Meters by Rig">
+                    {rigBreakdown.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={rigBreakdown} barSize={32}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={ttStyle} />
+                                <Bar dataKey="totalMeters" fill="#f97316" radius={[6, 6, 0, 0]} name="Meters" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+                <ChartCard title="Daily Production Trend">
+                    {dailyTrend.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <LineChart data={dailyTrend}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={ttStyle} />
+                                <Line type="monotone" dataKey="meters" stroke="#f97316" strokeWidth={2} dot={{ fill: '#f97316', r: 3 }} name="Meters" />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+            </div>
+            {/* Project breakdown table */}
+            {projectBreakdown.length > 0 && (
+                <ChartCard title="Production by Project">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-800/50">
+                                    <th className="text-left px-4 py-2 text-xs text-slate-500 uppercase">Project</th>
+                                    <th className="text-left px-4 py-2 text-xs text-slate-500 uppercase">Client</th>
+                                    <th className="text-right px-4 py-2 text-xs text-slate-500 uppercase">Meters</th>
+                                    <th className="text-right px-4 py-2 text-xs text-slate-500 uppercase">Entries</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {projectBreakdown.map((p, i) => (
+                                    <tr key={i} className="border-b border-slate-800/30">
+                                        <td className="px-4 py-3 text-white font-medium">{p.projectName}</td>
+                                        <td className="px-4 py-3 text-slate-400">{p.clientName}</td>
+                                        <td className="px-4 py-3 text-right text-orange-400 font-semibold">{p.totalMeters.toLocaleString()}m</td>
+                                        <td className="px-4 py-3 text-right text-slate-400">{p.entries}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </ChartCard>
+            )}
+        </div>
+    );
+}
+
+// ============ DOWNTIME TAB ============
+function DowntimeTab({ data }) {
+    const { categoryBreakdown, rigNpt } = data;
+    const totalHours = categoryBreakdown.reduce((s, c) => s + c.hours, 0);
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <KPI label="Total NPT" value={`${totalHours.toFixed(1)} hrs`} />
+                <KPI label="Categories" value={categoryBreakdown.length} />
+                <KPI label="Total Incidents" value={categoryBreakdown.reduce((s, c) => s + c.count, 0)} />
+                <KPI label="Worst Category" value={categoryBreakdown.sort((a, b) => b.hours - a.hours)[0]?.category || '—'} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChartCard title="NPT by Category">
+                    {categoryBreakdown.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <PieChart>
+                                <Pie data={categoryBreakdown} dataKey="hours" nameKey="category" cx="50%" cy="50%" outerRadius={100} label>
+                                    {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={ttStyle} />
+                                <Legend wrapperStyle={{ color: '#94a3b8' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+                <ChartCard title="NPT by Rig">
+                    {rigNpt.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={rigNpt} barSize={32}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={ttStyle} />
+                                <Bar dataKey="hours" fill="#ef4444" radius={[6, 6, 0, 0]} name="NPT Hours" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+            </div>
+        </div>
+    );
+}
+
+// ============ FINANCIAL TAB ============
+function FinancialTab({ data }) {
+    const { totals, rigBreakdown } = data;
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <KPI label="Total Fuel" value={`${Number(totals.totalFuel).toLocaleString()} L`} />
+                <KPI label="Total Consumables" value={`$${Number(totals.totalConsumables).toLocaleString()}`} />
+                <KPI label="Est. Fuel Cost" value={`$${Number(totals.estimatedFuelCost).toLocaleString()}`} />
+                <KPI label="Cost/Meter" value={`$${totals.costPerMeter}/m`} />
+            </div>
+            {totals.estimatedRevenue > 0 && (
+                <div className="grid grid-cols-3 gap-4">
+                    <KPI label="Est. Revenue" value={`$${Number(totals.estimatedRevenue).toLocaleString()}`} />
+                    <KPI label="Total Cost" value={`$${Number(totals.totalCost).toLocaleString()}`} />
+                    <KPI label="Margin" value={`${totals.margin}%`} />
+                </div>
+            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChartCard title="Fuel Consumption by Rig">
+                    {rigBreakdown.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={rigBreakdown} barSize={32}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={ttStyle} />
+                                <Bar dataKey="fuel" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Fuel (L)" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+                <ChartCard title="Fuel Cost by Rig">
+                    {rigBreakdown.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={rigBreakdown} barSize={32}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={ttStyle} formatter={(v) => [`$${Number(v).toLocaleString()}`, 'Cost']} />
+                                <Bar dataKey="fuelCost" fill="#10b981" radius={[6, 6, 0, 0]} name="Fuel Cost ($)" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+            </div>
+        </div>
+    );
+}
+
+// ============ MAINTENANCE TAB ============
+function MaintenanceTab({ data }) {
+    const { totalLogs, recentLogs, rigFrequency } = data;
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <KPI label="Total Logs" value={totalLogs} />
+                <KPI label="Rigs Serviced" value={rigFrequency.length} />
+                <KPI label="Total Maint. Cost" value={`$${rigFrequency.reduce((s, r) => s + r.totalCost, 0).toLocaleString()}`} />
+                <KPI label="Most Serviced" value={rigFrequency.sort((a, b) => b.count - a.count)[0]?.name || '—'} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChartCard title="Maintenance Frequency by Rig">
+                    {rigFrequency.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={rigFrequency} barSize={32}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={ttStyle} />
+                                <Bar dataKey="count" fill="#8b5cf6" radius={[6, 6, 0, 0]} name="Events" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+                <ChartCard title="Recent Maintenance Logs">
+                    <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                        {recentLogs.length > 0 ? recentLogs.map(l => (
+                            <div key={l.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-800/30">
+                                <div>
+                                    <p className="text-sm font-medium text-slate-200">{l.rig}</p>
+                                    <p className="text-xs text-slate-500">{l.type} · {l.description?.substring(0, 40)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-semibold text-purple-400">{l.cost ? `$${l.cost}` : '—'}</p>
+                                    <p className="text-xs text-slate-500">{new Date(l.date).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        )) : <Empty />}
+                    </div>
+                </ChartCard>
+            </div>
+        </div>
+    );
+}
+
+// ============ SHARED COMPONENTS ============
+const ttStyle = { background: '#1e293b', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' };
+
+function KPI({ label, value }) {
     return (
         <div className="rounded-2xl bg-[#111827] border border-slate-800/50 p-4">
             <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">{label}</p>
@@ -281,10 +367,6 @@ function ChartCard({ title, children }) {
     );
 }
 
-function EmptyState() {
-    return (
-        <div className="h-[280px] flex items-center justify-center text-slate-600 text-sm">
-            No data for this period
-        </div>
-    );
+function Empty() {
+    return <div className="h-[280px] flex items-center justify-center text-slate-600 text-sm">No data for this period</div>;
 }

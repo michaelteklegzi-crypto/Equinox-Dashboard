@@ -371,12 +371,160 @@ function ProjectManagement() {
 
 // ============ FINANCIAL SETTINGS ============
 function FinancialSettings() {
+    const [params, setParams] = useState([]);
+    const [rigs, setRigs] = useState([]);
+    const [projects, setProjects] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({ scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '1.5', consumablesFactor: '1.0', laborCostFactor: '1.0' });
+
+    const fetchAll = () => {
+        Promise.all([
+            axios.get('/api/financial-params', { withCredentials: true }).catch(() => ({ data: [] })),
+            axios.get('/api/rigs', { withCredentials: true }),
+            axios.get('/api/projects', { withCredentials: true }),
+        ]).then(([fp, r, p]) => {
+            setParams(fp.data);
+            setRigs(r.data);
+            setProjects(p.data);
+        }).finally(() => setLoading(false));
+    };
+
+    useEffect(() => { fetchAll(); }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const payload = {
+                costPerMeter: parseFloat(form.costPerMeter) || 0,
+                fuelCostFactor: parseFloat(form.fuelCostFactor) || 1,
+                consumablesFactor: parseFloat(form.consumablesFactor) || 1,
+                laborCostFactor: parseFloat(form.laborCostFactor) || 1,
+            };
+            if (form.scope === 'rig' && form.rigId) payload.rigId = form.rigId;
+            if (form.scope === 'project' && form.projectId) payload.projectId = form.projectId;
+
+            await axios.post('/api/financial-params', payload, { withCredentials: true });
+            setShowForm(false);
+            setForm({ scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '1.5', consumablesFactor: '1.0', laborCostFactor: '1.0' });
+            fetchAll();
+        } catch (err) { alert('Error: ' + (err.response?.data?.error || err.message)); }
+        finally { setSaving(false); }
+    };
+
+    const inputClass = "w-full px-3 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50";
+
     return (
-        <div className="text-center py-20">
-            <DollarSign className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-400">Financial Parameters</h3>
-            <p className="text-sm text-slate-600 mt-2">Configure cost per meter, fuel rates, and labor factors.</p>
-            <p className="text-xs text-slate-700 mt-1">Coming in Phase 4</p>
+        <div className="space-y-4">
+            <div className="flex justify-end">
+                <button onClick={() => setShowForm(!showForm)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold text-sm shadow-lg shadow-orange-500/25">
+                    <Plus className="h-4 w-4" /> Add Parameter
+                </button>
+            </div>
+
+            {showForm && (
+                <form onSubmit={handleSubmit} className="rounded-2xl bg-[#111827] border border-slate-800/50 p-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-300 mb-2">Financial Parameter</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Scope *</label>
+                            <select value={form.scope} onChange={e => setForm(f => ({ ...f, scope: e.target.value }))} className={inputClass}>
+                                <option value="global">Global</option>
+                                <option value="rig">Per Rig</option>
+                                <option value="project">Per Project</option>
+                            </select>
+                        </div>
+                        {form.scope === 'rig' && (
+                            <div>
+                                <label className="block text-xs text-slate-500 uppercase mb-1">Rig</label>
+                                <select value={form.rigId} onChange={e => setForm(f => ({ ...f, rigId: e.target.value }))} className={inputClass}>
+                                    <option value="">Select</option>
+                                    {rigs.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                </select>
+                            </div>
+                        )}
+                        {form.scope === 'project' && (
+                            <div>
+                                <label className="block text-xs text-slate-500 uppercase mb-1">Project</label>
+                                <select value={form.projectId} onChange={e => setForm(f => ({ ...f, projectId: e.target.value }))} className={inputClass}>
+                                    <option value="">Select</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                        )}
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Cost/Meter ($)</label>
+                            <input type="number" step="0.01" value={form.costPerMeter} onChange={e => setForm(f => ({ ...f, costPerMeter: e.target.value }))} className={inputClass} placeholder="e.g. 12.50" />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Fuel Factor ($/L)</label>
+                            <input type="number" step="0.01" value={form.fuelCostFactor} onChange={e => setForm(f => ({ ...f, fuelCostFactor: e.target.value }))} className={inputClass} />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Consumables Factor</label>
+                            <input type="number" step="0.01" value={form.consumablesFactor} onChange={e => setForm(f => ({ ...f, consumablesFactor: e.target.value }))} className={inputClass} />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Labor Factor</label>
+                            <input type="number" step="0.01" value={form.laborCostFactor} onChange={e => setForm(f => ({ ...f, laborCostFactor: e.target.value }))} className={inputClass} />
+                        </div>
+                    </div>
+                    <button type="submit" disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold text-sm shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all disabled:opacity-50">
+                        <Save className="h-4 w-4" />
+                        {saving ? 'Saving...' : 'Save Parameter'}
+                    </button>
+                </form>
+            )}
+
+            <div className="rounded-2xl bg-[#111827] border border-slate-800/50 overflow-hidden">
+                <div className="p-4 border-b border-slate-800/50">
+                    <h3 className="text-sm font-semibold text-slate-300">Financial Parameters ({params.length})</h3>
+                </div>
+                {loading ? (
+                    <div className="p-6 space-y-3">
+                        {[1, 2].map(i => <div key={i} className="h-10 bg-slate-800 rounded animate-pulse" />)}
+                    </div>
+                ) : params.length === 0 ? (
+                    <div className="text-center py-12">
+                        <DollarSign className="h-10 w-10 text-slate-600 mx-auto mb-3" />
+                        <p className="text-sm text-slate-500">No financial parameters configured yet</p>
+                        <p className="text-xs text-slate-600 mt-1">Add global or scoped parameters above</p>
+                    </div>
+                ) : (
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-slate-800/50">
+                                <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Scope</th>
+                                <th className="text-right px-5 py-3 text-xs text-slate-500 uppercase font-medium">Cost/Meter</th>
+                                <th className="text-right px-5 py-3 text-xs text-slate-500 uppercase font-medium">Fuel Factor</th>
+                                <th className="text-right px-5 py-3 text-xs text-slate-500 uppercase font-medium">Consumables</th>
+                                <th className="text-right px-5 py-3 text-xs text-slate-500 uppercase font-medium">Labor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {params.map(p => (
+                                <tr key={p.id} className="border-b border-slate-800/30 hover:bg-slate-800/20">
+                                    <td className="px-5 py-4">
+                                        <span className="text-white font-medium">{p.rig?.name || p.project?.name || 'Global'}</span>
+                                        <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${!p.rigId && !p.projectId ? 'bg-emerald-500/15 text-emerald-400' :
+                                                p.rigId ? 'bg-blue-500/15 text-blue-400' : 'bg-purple-500/15 text-purple-400'
+                                            }`}>{!p.rigId && !p.projectId ? 'Global' : p.rigId ? 'Rig' : 'Project'}</span>
+                                    </td>
+                                    <td className="px-5 py-4 text-right text-orange-400 font-semibold">${p.costPerMeter}</td>
+                                    <td className="px-5 py-4 text-right text-slate-300">${p.fuelCostFactor}/L</td>
+                                    <td className="px-5 py-4 text-right text-slate-300">×{p.consumablesFactor}</td>
+                                    <td className="px-5 py-4 text-right text-slate-300">×{p.laborCostFactor}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
         </div>
     );
 }
+

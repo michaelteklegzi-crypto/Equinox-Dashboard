@@ -96,6 +96,7 @@ app.use('/api/drilling', drillingRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/financial-params', require('./routes/financial.routes'));
 
 // Global Error Handler
 app.use((err, req, res, next) => {
