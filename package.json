@@ -21,7 +21,7 @@
         "pg": "^8.18.0"
     },
     "scripts": {
-        "postinstall": "cd client && npm install && npx prisma generate --schema=server/prisma/schema.prisma",
+        "postinstall": "cd client && npm install && cd server && npm install && npx prisma generate --schema=server/prisma/schema.prisma",
         "build:client": "cd client && npm run build",
         "electron:dev": "electron .",
         "electron:build": "npm run build:client && electron-builder",
