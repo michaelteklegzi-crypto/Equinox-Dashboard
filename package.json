@@ -1,5 +1,23 @@
 {
     "name": "equinox-dashboard",
     "version": "1.0.0",
-    "private": true
+    "private": true,
+    "dependencies": {
+        "@prisma/client": "5.22.0",
+        "@quixo3/prisma-session-store": "^3.1.19",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.6",
+        "dotenv": "^17.2.4",
+        "express": "^5.2.1",
+        "express-session": "^1.19.0",
+        "nodemailer": "^8.0.1",
+        "pg": "^8.18.0"
+    },
+    "devDependencies": {
+        "prisma": "5.22.0"
+    },
+    "scripts": {
+        "postinstall": "npx prisma generate --schema=server/prisma/schema.prisma",
+        "build:client": "cd client && npm install && npm run build"
+    }
 }
