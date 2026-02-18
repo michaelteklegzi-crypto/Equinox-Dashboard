@@ -166,14 +166,44 @@ router.get('/downtime', async (req, res) => {
             _count: true,
         }).catch(() => []);
 
+        // NPT by Rig and Category (Stacked)
+        const byRigCat = await prisma.drillingEntry.groupBy({
+            by: ['rigId', 'downtimeCategory'],
+            where: { ...where, downtimeCategory: { not: null } },
+            _sum: { nptHours: true },
+        });
+
+        const rigCategoryMatrix = [];
+        const rigsList = await prisma.rig.findMany({ select: { id: true, name: true } });
+        const rigNameMap = Object.fromEntries(rigsList.map(r => [r.id, r.name]));
+
+        // Pivot data for Recharts: { rig: 'Rig 1', Mechanical: 10, Weather: 5, ... }
+        const tempMap = {};
+        byRigCat.forEach(item => {
+            const rigName = rigNameMap[item.rigId] || 'Unknown';
+            if (!tempMap[rigName]) tempMap[rigName] = { rig: rigName };
+            const cat = item.downtimeCategory || 'Unclassified';
+            tempMap[rigName][cat] = (tempMap[rigName][cat] || 0) + (item._sum.nptHours || 0);
+        });
+        const nptByRigAndCategory = Object.values(tempMap);
+
+        // Daily Downtime Trend
+        const dailyNpt = await prisma.drillingEntry.groupBy({
+            by: ['date'],
+            where,
+            _sum: { nptHours: true },
+            orderBy: { date: 'asc' },
+        });
+        const downtimeTrend = dailyNpt.map(d => ({
+            date: new Date(d.date).toISOString().split('T')[0],
+            hours: d._sum.nptHours || 0,
+        }));
+
         res.json({
             categoryBreakdown,
             rigNpt,
-            downtimeLogs: downtimeLogs.map(d => ({
-                category: d.category,
-                hours: d._sum.durationHours || 0,
-                count: d._count,
-            })),
+            nptByRigAndCategory,
+            downtimeTrend,
         });
     } catch (error) {
         console.error('Downtime analytics error:', error);

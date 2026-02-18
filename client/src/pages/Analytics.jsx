@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Clock, DollarSign, Wrench, Download, FileSpreadsheet } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend, AreaChart, Area } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import axios from 'axios';
@@ -172,6 +172,7 @@ export default function Analytics() {
 // ============ PRODUCTION TAB ============
 function ProductionTab({ data }) {
     const { totals, rigBreakdown, projectBreakdown, dailyTrend, comparisonTrend } = data;
+    // Dynamic keys for multi-rig comparison
     const rigKeys = comparisonTrend && comparisonTrend.length > 0 ? Object.keys(comparisonTrend[0]).filter(k => k !== 'date') : [];
     return (
         <div className="space-y-6">
@@ -261,8 +262,12 @@ function ProductionTab({ data }) {
 
 // ============ DOWNTIME TAB ============
 function DowntimeTab({ data }) {
-    const { categoryBreakdown, rigNpt } = data;
+    const { categoryBreakdown, rigNpt, nptByRigAndCategory, downtimeTrend } = data;
     const totalHours = categoryBreakdown.reduce((s, c) => s + c.hours, 0);
+
+    // Get all unique categories for stacking
+    const categories = Array.from(new Set(categoryBreakdown.map(c => c.category)));
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -271,6 +276,28 @@ function DowntimeTab({ data }) {
                 <KPI label="Total Incidents" value={categoryBreakdown.reduce((s, c) => s + c.count, 0)} />
                 <KPI label="Worst Category" value={[...categoryBreakdown].sort((a, b) => b.hours - a.hours)[0]?.category || '—'} />
             </div>
+
+            {/* Daily Trend */}
+            <ChartCard title="Daily Downtime Trend">
+                {downtimeTrend && downtimeTrend.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={downtimeTrend.map(i => ({ ...i }))}>
+                            <defs>
+                                <linearGradient id="colorNpt" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} />
+                            <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                            <Tooltip contentStyle={ttStyle} />
+                            <Area type="monotone" dataKey="hours" stroke="#ef4444" fillOpacity={1} fill="url(#colorNpt)" name="NPT Hours" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                ) : <Empty />}
+            </ChartCard>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <ChartCard title="NPT by Category">
                     {categoryBreakdown.length > 0 ? (
@@ -285,15 +312,19 @@ function DowntimeTab({ data }) {
                         </ResponsiveContainer>
                     ) : <Empty />}
                 </ChartCard>
-                <ChartCard title="NPT by Rig">
-                    {rigNpt.length > 0 ? (
+
+                <ChartCard title="NPT by Rig & Reason">
+                    {nptByRigAndCategory && nptByRigAndCategory.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={rigNpt.map(i => ({ ...i }))} barSize={32}>
+                            <BarChart data={nptByRigAndCategory.map(i => ({ ...i }))} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <XAxis dataKey="rig" tick={{ fill: '#64748b', fontSize: 11 }} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
                                 <Tooltip contentStyle={ttStyle} />
-                                <Bar dataKey="hours" fill="#ef4444" radius={[6, 6, 0, 0]} name="NPT Hours" />
+                                <Legend />
+                                {categories.map((cat, index) => (
+                                    <Bar key={cat} dataKey={cat} stackId="a" fill={COLORS[index % COLORS.length]} />
+                                ))}
                             </BarChart>
                         </ResponsiveContainer>
                     ) : <Empty />}
@@ -302,6 +333,8 @@ function DowntimeTab({ data }) {
         </div>
     );
 }
+
+
 
 // ============ FINANCIAL TAB ============
 function FinancialTab({ data }) {
