@@ -97,6 +97,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/financial-params', require('./routes/financial.routes'));
+app.use('/api/predictive', require('./routes/predictive.routes'));
 
 // Global Error Handler
 app.use((err, req, res, next) => {

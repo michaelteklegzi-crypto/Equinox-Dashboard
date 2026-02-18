@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Clock, DollarSign, Wrench, Download, FileSpreadsheet } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend, AreaChart, Area, ComposedChart } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import axios from 'axios';
@@ -11,6 +11,7 @@ const TABS = [
     { key: 'downtime', label: 'Downtime', icon: Clock },
     { key: 'financial', label: 'Financial', icon: DollarSign },
     { key: 'maintenance', label: 'Maintenance', icon: Wrench },
+    { key: 'predictive', label: 'Predictive', icon: TrendingUp },
 ];
 
 export default function Analytics() {
@@ -22,6 +23,8 @@ export default function Analytics() {
     const [dtData, setDtData] = useState(null);
     const [finData, setFinData] = useState(null);
     const [maintData, setMaintData] = useState(null);
+    const [predData, setPredData] = useState(null);
+    const [scenario, setScenario] = useState('normal');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -56,12 +59,15 @@ export default function Analytics() {
             } else if (t === 'maintenance') {
                 const res = await axios.get(`/api/analytics/maintenance?${q}`, { withCredentials: true });
                 setMaintData(res.data);
+            } else if (t === 'predictive') {
+                const res = await axios.get(`/api/predictive/forecast?${q}&scenario=${scenario}`, { withCredentials: true });
+                setPredData(res.data);
             }
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchTab(tab); }, [tab, filters]);
+    useEffect(() => { fetchTab(tab); }, [tab, filters, scenario]);
 
     const handleExportCSV = () => {
         const q = buildParams();
@@ -163,6 +169,7 @@ export default function Analytics() {
                     {tab === 'downtime' && dtData && <DowntimeTab data={dtData} />}
                     {tab === 'financial' && finData && <FinancialTab data={finData} />}
                     {tab === 'maintenance' && maintData && <MaintenanceTab data={maintData} />}
+                    {tab === 'predictive' && predData && <PredictiveTab data={predData} scenario={scenario} setScenario={setScenario} />}
                 </>
             )}
         </div>
@@ -427,6 +434,118 @@ function MaintenanceTab({ data }) {
                         )) : <Empty />}
                     </div>
                 </ChartCard>
+            </div>
+        </div>
+    );
+}
+
+// ============ PREDICTIVE TAB ============
+function PredictiveTab({ data, scenario, setScenario }) {
+    const { actuals, forecast, risk, financials } = data;
+
+    // Combine actuals and forecast for the chart
+    // We need a continuous line. The last actual point should connect to first forecast point.
+    // The backend provides 'forecast' starting from tomorrow.
+
+    const chartData = [
+        ...actuals.map(d => ({ ...d, type: 'actual' })),
+        // Add last actual as first forecast point to connect lines?
+        // OR just rely on Recharts.
+        ...forecast.map(d => ({ ...d, type: 'forecast' }))
+    ];
+
+    const getScenarioColor = () => {
+        if (scenario === 'optimistic') return '#10b981';
+        if (scenario === 'conservative') return '#f59e0b';
+        return '#3b82f6'; // normal
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex bg-slate-800/50 p-1 rounded-xl">
+                    {['normal', 'optimistic', 'conservative'].map(s => (
+                        <button key={s} onClick={() => setScenario(s)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${scenario === s ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+                            {s}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-700/30">
+                    <span className="w-2 h-2 rounded-full" style={{ background: getScenarioColor() }}></span>
+                    Mode: <span className="text-slate-200 font-medium capitalize">{scenario} Case</span>
+                </div>
+            </div>
+
+            {/* Financial Bridge */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <KPI label="Projected Revenue (90 Days)" value={`$${Number(financials.projectedRevenue).toLocaleString()}`} />
+                <KPI label="Projected Margin" value={`${financials.marginPercent}%`} />
+                <div className="rounded-2xl bg-[#111827] border border-slate-800/50 p-4 relative group">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Risk Assessment</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xl font-bold ${risk.status === 'Red' ? 'text-red-500' : risk.status === 'Yellow' ? 'text-yellow-500' : 'text-green-500'}`}>
+                            {risk.status} ({risk.score}%)
+                        </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">Primary Factor: {risk.primaryFactor}</p>
+                </div>
+            </div>
+
+            {/* Explanation Banner */}
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-200 text-sm flex items-start gap-3">
+                <div className="bg-blue-500/20 p-2 rounded-lg"><TrendingUp className="h-4 w-4" /></div>
+                <div>
+                    <p className="font-semibold mb-1">Forecast Insight</p>
+                    <p className="opacity-80">{financials.explanation}</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <ChartCard title="90-Day Production Roadmap">
+                        <ResponsiveContainer width="100%" height={320}>
+                            <ComposedChart data={chartData}>
+                                <defs>
+                                    <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={getScenarioColor()} stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor={getScenarioColor()} stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} minTickGap={30} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={ttStyle} />
+                                <Legend />
+                                {/* Confidence Interval Area */}
+                                <Area type="monotone" dataKey="ciHigh" dataKey2="ciLow" stroke="none" fill={getScenarioColor()} fillOpacity={0.1} name="Confidence Interval" />
+
+                                <Line type="monotone" dataKey="actual" stroke="#94a3b8" strokeWidth={2} dot={false} name="Actual History" />
+                                <Line type="monotone" dataKey="forecast" stroke={getScenarioColor()} strokeWidth={2} strokeDasharray="5 5" dot={false} name="Forecast" />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </ChartCard>
+                </div>
+                <div className="space-y-6">
+                    <ChartCard title="Downtime Risk Probability">
+                        <div className="flex flex-col items-center justify-center h-[280px] relative">
+                            {/* Custom Circular Gauge CSS approach */}
+                            <div className="relative w-40 h-40">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="15" fill="none" />
+                                    <circle cx="80" cy="80" r="70" stroke={risk.status === 'Red' ? '#ef4444' : risk.status === 'Yellow' ? '#f59e0b' : '#10b981'} strokeWidth="15" fill="none" strokeDasharray="440" strokeDashoffset={440 - (440 * risk.score) / 100} className="transition-all duration-1000 ease-out" />
+                                </svg>
+                                <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
+                                    <span className="text-3xl font-bold text-white">{risk.score}%</span>
+                                    <span className="text-xs text-slate-500 uppercase">Risk Prob.</span>
+                                </div>
+                            </div>
+                            <p className="text-center text-sm text-slate-400 mt-6 px-4">
+                                {risk.message}
+                            </p>
+                        </div>
+                    </ChartCard>
+                </div>
             </div>
         </div>
     );
