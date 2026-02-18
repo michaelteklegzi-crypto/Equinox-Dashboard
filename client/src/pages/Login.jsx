@@ -21,7 +21,8 @@ export default function Login() {
         if (!result.success) {
             setLoading(false);
             console.error("Login failed:", result.error);
-            alert("Login failed. Please check your connection or database.");
+            // Show the actual error message from the server
+            alert(`Login Failed: ${result.error || "Unknown Error"}`);
         }
         // If success, Redirect handled by AuthContext/App
     };
