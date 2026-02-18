@@ -46,7 +46,15 @@ app.get('/api/health-check', async (req, res) => {
 });
 
 app.get('/api/ping', (req, res) => {
-    res.json({ status: 'pong', timestamp: new Date().toISOString() });
+    res.json({
+        status: 'pong',
+        timestamp: new Date().toISOString(),
+        hasDbUrl: !!process.env.DATABASE_URL,
+        dbUrlPreview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'NOT SET',
+        hasSessionSecret: !!process.env.SESSION_SECRET,
+        nodeEnv: process.env.NODE_ENV || 'NOT SET',
+        envKeys: Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('SESSION') || k.includes('NODE_ENV'))
+    });
 });
 
 // Session middleware
