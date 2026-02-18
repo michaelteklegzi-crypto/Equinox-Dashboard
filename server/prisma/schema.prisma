@@ -95,10 +95,22 @@ model DrillingEntry {
 
   // Production
   metersDrilled     Float
-  nptHours          Float     @default(0)
+  holeDepth         Float?    // Current hole depth
+  bitType           String?   // "PDC", "Tricone", etc.
 
-  // Downtime
-  downtimeCategory  String?   // "Mechanical" | "Operational" | "Weather" | "Safety" | "WaitingOnParts"
+  // Hours Breakdown (Must sum to totalShiftHours)
+  totalShiftHours   Float     @default(12)
+  drillingHours     Float     @default(0)
+  mechanicalDowntime Float    @default(0)
+  operationalDelay  Float     @default(0)
+  weatherDowntime   Float     @default(0)
+  safetyDowntime    Float     @default(0)
+  waitingOnParts    Float     @default(0)
+  standbyHours      Float     @default(0)
+
+  // Legacy (Keep for backward compatibility if needed, or deprecate)
+  nptHours          Float     @default(0) 
+  downtimeCategory  String?   
 
   // Costs
   fuelConsumed      Float?    // Liters
@@ -132,10 +144,16 @@ model FinancialParam {
   projectId         String?   // If scope = "project"
   project           Project?  @relation(fields: [projectId], references: [id])
 
+  // Costs
   costPerMeter      Float?
   fuelCostFactor    Float?    // Cost per liter
   consumablesFactor Float?    // Multiplier
   laborCostFactor   Float?    // Cost per hour
+  
+  // Targets & Defaults
+  defaultShiftHours Float?    @default(12)
+  targetAvailability Float?   @default(90) // Percentage
+  targetUtilization  Float?   @default(75) // Percentage
 
   isActive          Boolean   @default(true)
 

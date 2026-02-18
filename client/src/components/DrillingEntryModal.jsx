@@ -22,14 +22,39 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
         rigId: '',
         projectId: '',
         shift: 'Day',
+
+        // Hours Breakdown
+        totalShiftHours: '12',
+        drillingHours: '0',
+        mechanicalDowntime: '0',
+        operationalDelay: '0',
+        weatherDowntime: '0',
+        safetyDowntime: '0',
+        waitingOnParts: '0',
+        standbyHours: '0',
+
+        // Production & Meta
         metersDrilled: '',
-        nptHours: '0',
-        downtimeCategory: '',
+        holeDepth: '',
+        bitType: '',
+
         fuelConsumed: '',
         consumablesCost: '',
         remarks: '',
         supervisorName: '',
     });
+
+    const totalAccounted = (
+        (parseFloat(form.drillingHours) || 0) +
+        (parseFloat(form.mechanicalDowntime) || 0) +
+        (parseFloat(form.operationalDelay) || 0) +
+        (parseFloat(form.weatherDowntime) || 0) +
+        (parseFloat(form.safetyDowntime) || 0) +
+        (parseFloat(form.waitingOnParts) || 0) +
+        (parseFloat(form.standbyHours) || 0)
+    );
+
+    const isHoursValid = Math.abs(totalAccounted - (parseFloat(form.totalShiftHours) || 12)) < 0.1;
 
     useEffect(() => {
         Promise.all([
@@ -47,6 +72,12 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (totalAccounted > (parseFloat(form.totalShiftHours) || 12)) {
+            showToast(`Total hours (${totalAccounted.toFixed(1)}) exceeds shift duration!`, 'error');
+            return;
+        }
+
         setLoading(true);
         try {
             await axios.post('/api/drilling', form, { withCredentials: true });
@@ -108,24 +139,65 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
                         </div>
                     </div>
 
-                    {/* Row 3: Meters, NPT */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Row 3: Production */}
+                    <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className={labelClass}>Meters Drilled *</label>
                             <input type="number" step="0.1" name="metersDrilled" value={form.metersDrilled} onChange={handleChange} className={inputClass} placeholder="e.g. 45.5" required />
                         </div>
                         <div>
-                            <label className={labelClass}>NPT Hours</label>
-                            <input type="number" step="0.1" name="nptHours" value={form.nptHours} onChange={handleChange} className={inputClass} placeholder="0" />
+                            <label className={labelClass}>Hole Depth</label>
+                            <input type="number" step="0.1" name="holeDepth" value={form.holeDepth} onChange={handleChange} className={inputClass} placeholder="Total depth" />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Bit Type</label>
+                            <input type="text" name="bitType" value={form.bitType} onChange={handleChange} className={inputClass} placeholder="e.g. PDC" />
                         </div>
                     </div>
 
-                    {/* Downtime Category */}
-                    <div>
-                        <label className={labelClass}>Downtime Category</label>
-                        <select name="downtimeCategory" value={form.downtimeCategory} onChange={handleChange} className={inputClass}>
-                            {DOWNTIME_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                        </select>
+                    {/* Hours Breakdown Section */}
+                    <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50 space-y-4">
+                        <div className="flex justify-between items-center border-b border-slate-700/50 pb-2 mb-2">
+                            <label className="text-sm font-bold text-orange-400 uppercase tracking-wider">Time Breakdown</label>
+                            <div className={`text-sm font-mono ${totalAccounted > (parseFloat(form.totalShiftHours) || 12) ? 'text-red-400' : 'text-green-400'}`}>
+                                Total: {totalAccounted.toFixed(1)} / {form.totalShiftHours} Hrs
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-3">
+                            <div>
+                                <label className={labelClass}>Shift Hrs</label>
+                                <input type="number" name="totalShiftHours" value={form.totalShiftHours} onChange={handleChange} className={`${inputClass} font-bold text-white`} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Drilling</label>
+                                <input type="number" step="0.1" name="drillingHours" value={form.drillingHours} onChange={handleChange} className={`${inputClass} border-orange-500/30`} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Standby</label>
+                                <input type="number" step="0.1" name="standbyHours" value={form.standbyHours} onChange={handleChange} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Mechanical</label>
+                                <input type="number" step="0.1" name="mechanicalDowntime" value={form.mechanicalDowntime} onChange={handleChange} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Operational</label>
+                                <input type="number" step="0.1" name="operationalDelay" value={form.operationalDelay} onChange={handleChange} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Weather</label>
+                                <input type="number" step="0.1" name="weatherDowntime" value={form.weatherDowntime} onChange={handleChange} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Safety</label>
+                                <input type="number" step="0.1" name="safetyDowntime" value={form.safetyDowntime} onChange={handleChange} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Waiting</label>
+                                <input type="number" step="0.1" name="waitingOnParts" value={form.waitingOnParts} onChange={handleChange} className={inputClass} />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Row 4: Fuel, Consumables */}

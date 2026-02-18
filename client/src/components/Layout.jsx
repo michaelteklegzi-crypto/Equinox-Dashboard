@@ -8,6 +8,7 @@ const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
     { icon: Activity, label: 'Drilling Ops', to: '/drilling' },
     { icon: Wrench, label: 'Maintenance', to: '/maintenance' },
+    { icon: Activity, label: 'Availability', to: '/reports/availability' },
     { icon: BarChart3, label: 'Analytics', to: '/analytics' },
     { icon: Shield, label: 'Admin', to: '/admin', adminOnly: true },
 ];
@@ -126,8 +127,8 @@ function NavItem({ icon: Icon, label, active = false, to, onClick }) {
             to={to}
             onClick={onClick}
             className={`sidebar-nav-item flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 btn-press ${active
-                    ? 'active bg-gradient-to-r from-orange-500/15 to-amber-500/10 text-orange-400 shadow-sm shadow-orange-500/5'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                ? 'active bg-gradient-to-r from-orange-500/15 to-amber-500/10 text-orange-400 shadow-sm shadow-orange-500/5'
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
         >
             <Icon className={`h-[18px] w-[18px] transition-transform duration-200 ${active ? 'text-orange-400 scale-110' : ''}`} />

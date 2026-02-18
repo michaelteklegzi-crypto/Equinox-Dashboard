@@ -6,6 +6,7 @@ import DrillingOperations from './pages/DrillingOperations';
 import MaintenanceReports from './pages/MaintenanceReports';
 import Analytics from './pages/Analytics';
 import Admin from './pages/Admin';
+import MachineAvailability from './pages/MachineAvailability';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './context/ToastContext';
@@ -36,6 +37,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <MaintenanceReports />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/reports/availability" element={
+              <ProtectedRoute>
+                <Layout>
+                  <MachineAvailability />
                 </Layout>
               </ProtectedRoute>
             } />

@@ -40,11 +40,36 @@ router.post('/', async (req, res) => {
         const {
             date, shift, rigId, projectId,
             metersDrilled, nptHours, downtimeCategory,
+            // New detailed hours
+            drillingHours, mechanicalDowntime, operationalDelay,
+            weatherDowntime, safetyDowntime, waitingOnParts, standbyHours,
+            totalShiftHours, holeDepth, bitType,
+            // Costs & Meta
             fuelConsumed, consumablesCost, remarks, supervisorName
         } = req.body;
 
         if (!date || !shift || !rigId || !projectId || metersDrilled === undefined) {
             return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Validate hours sum
+        const shiftDuration = totalShiftHours ? parseFloat(totalShiftHours) : 12;
+        const totalAccounted = (
+            (parseFloat(drillingHours) || 0) +
+            (parseFloat(mechanicalDowntime) || 0) +
+            (parseFloat(operationalDelay) || 0) +
+            (parseFloat(weatherDowntime) || 0) +
+            (parseFloat(safetyDowntime) || 0) +
+            (parseFloat(waitingOnParts) || 0) +
+            (parseFloat(standbyHours) || 0)
+        );
+
+        // Allow small floating point margin or exact match? 
+        // User said "Prevent total hours exceeding shift hours".
+        if (totalAccounted > shiftDuration) {
+            return res.status(400).json({
+                error: `Total hours (${totalAccounted}) exceed shift duration (${shiftDuration})`
+            });
         }
 
         const entry = await prisma.drillingEntry.create({
@@ -54,8 +79,23 @@ router.post('/', async (req, res) => {
                 rigId,
                 projectId,
                 metersDrilled: parseFloat(metersDrilled),
-                nptHours: nptHours ? parseFloat(nptHours) : 0,
+                // Detailed Breakdown
+                drillingHours: parseFloat(drillingHours) || 0,
+                mechanicalDowntime: parseFloat(mechanicalDowntime) || 0,
+                operationalDelay: parseFloat(operationalDelay) || 0,
+                weatherDowntime: parseFloat(weatherDowntime) || 0,
+                safetyDowntime: parseFloat(safetyDowntime) || 0,
+                waitingOnParts: parseFloat(waitingOnParts) || 0,
+                standbyHours: parseFloat(standbyHours) || 0,
+                totalShiftHours: shiftDuration,
+
+                holeDepth: holeDepth ? parseFloat(holeDepth) : null,
+                bitType: bitType || null,
+
+                // Legacy / Computed
+                nptHours: nptHours ? parseFloat(nptHours) : (shiftDuration - (parseFloat(drillingHours) || 0)),
                 downtimeCategory: downtimeCategory || null,
+
                 fuelConsumed: fuelConsumed ? parseFloat(fuelConsumed) : null,
                 consumablesCost: consumablesCost ? parseFloat(consumablesCost) : null,
                 remarks: remarks || null,
