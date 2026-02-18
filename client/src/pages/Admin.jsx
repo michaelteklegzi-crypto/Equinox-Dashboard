@@ -55,51 +55,123 @@ export default function Admin() {
 function UserManagement() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Driller' });
 
-    useEffect(() => {
+    const fetchUsers = () => {
         axios.get('/api/users', { withCredentials: true })
             .then(res => setUsers(res.data))
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(() => { fetchUsers(); }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            await axios.post('/api/auth/register', form, { withCredentials: true });
+            setShowForm(false);
+            setForm({ name: '', email: '', password: '', role: 'Driller' });
+            fetchUsers();
+        } catch (err) {
+            alert('Error: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const inputClass = "w-full px-3 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-slate-500";
+
+    const roleBadge = (role) => {
+        const colors = {
+            Admin: 'bg-red-500/15 text-red-400',
+            Supervisor: 'bg-blue-500/15 text-blue-400',
+            Driller: 'bg-orange-500/15 text-orange-400',
+            Viewer: 'bg-slate-500/15 text-slate-400',
+        };
+        return colors[role] || colors.Viewer;
+    };
 
     return (
-        <div className="rounded-2xl bg-[#111827] border border-slate-800/50 overflow-hidden">
-            <div className="p-4 border-b border-slate-800/50 flex justify-between items-center">
-                <h3 className="text-sm font-semibold text-slate-300">Users ({users.length})</h3>
+        <div className="space-y-4">
+            <div className="flex justify-end">
+                <button onClick={() => setShowForm(!showForm)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold text-sm shadow-lg shadow-orange-500/25">
+                    <Plus className="h-4 w-4" /> Add User
+                </button>
             </div>
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="border-b border-slate-800/50">
-                        <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Name</th>
-                        <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Email</th>
-                        <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Role</th>
-                        <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {loading ? [1, 2, 3].map(i => (
-                        <tr key={i} className="border-b border-slate-800/30">
-                            {[1, 2, 3, 4].map(j => <td key={j} className="px-5 py-4"><div className="h-4 bg-slate-800 rounded animate-pulse" /></td>)}
+
+            {showForm && (
+                <form onSubmit={handleSubmit} className="rounded-2xl bg-[#111827] border border-slate-800/50 p-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-300 mb-2">New User</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Full Name *</label>
+                            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputClass} required placeholder="John Doe" />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Email *</label>
+                            <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputClass} required placeholder="john@equinox.com" />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Password *</label>
+                            <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className={inputClass} required placeholder="Min 6 chars" />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Role *</label>
+                            <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className={inputClass}>
+                                <option value="Driller">Driller</option>
+                                <option value="Supervisor">Supervisor</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold text-sm shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all disabled:opacity-50">
+                        <Save className="h-4 w-4" />
+                        {saving ? 'Saving...' : 'Save User'}
+                    </button>
+                </form>
+            )}
+
+            <div className="rounded-2xl bg-[#111827] border border-slate-800/50 overflow-hidden">
+                <div className="p-4 border-b border-slate-800/50">
+                    <h3 className="text-sm font-semibold text-slate-300">Users ({users.length})</h3>
+                </div>
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-slate-800/50">
+                            <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Name</th>
+                            <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Email</th>
+                            <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Role</th>
+                            <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase font-medium">Status</th>
                         </tr>
-                    )) : users.map(u => (
-                        <tr key={u.id} className="border-b border-slate-800/30 hover:bg-slate-800/20">
-                            <td className="px-5 py-4 text-white font-medium">{u.name}</td>
-                            <td className="px-5 py-4 text-slate-400">{u.email}</td>
-                            <td className="px-5 py-4">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.role === 'Admin' ? 'bg-red-500/15 text-red-400' :
-                                        u.role === 'Supervisor' ? 'bg-blue-500/15 text-blue-400' :
-                                            'bg-slate-500/15 text-slate-400'
-                                    }`}>{u.role}</span>
-                            </td>
-                            <td className="px-5 py-4">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.isActive !== false ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
-                                    }`}>{u.isActive !== false ? 'Active' : 'Inactive'}</span>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {loading ? [1, 2, 3].map(i => (
+                            <tr key={i} className="border-b border-slate-800/30">
+                                {[1, 2, 3, 4].map(j => <td key={j} className="px-5 py-4"><div className="h-4 bg-slate-800 rounded animate-pulse" /></td>)}
+                            </tr>
+                        )) : users.map(u => (
+                            <tr key={u.id} className="border-b border-slate-800/30 hover:bg-slate-800/20">
+                                <td className="px-5 py-4 text-white font-medium">{u.name}</td>
+                                <td className="px-5 py-4 text-slate-400">{u.email}</td>
+                                <td className="px-5 py-4">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleBadge(u.role)}`}>{u.role}</span>
+                                </td>
+                                <td className="px-5 py-4">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.isActive !== false ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
+                                        }`}>{u.isActive !== false ? 'Active' : 'Inactive'}</span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -167,7 +239,10 @@ function RigManagement() {
                             <input type="number" value={form.operationalCapacity} onChange={e => setForm(f => ({ ...f, operationalCapacity: e.target.value }))} className={inputClass} />
                         </div>
                     </div>
-                    <button type="submit" className="px-6 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold">Save Rig</button>
+                    <button type="submit" className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold text-sm shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all">
+                        <Save className="h-4 w-4" />
+                        Save Rig
+                    </button>
                 </form>
             )}
 
@@ -190,8 +265,8 @@ function RigManagement() {
                                 <td className="px-5 py-4 text-slate-400">{r.site || '—'}</td>
                                 <td className="px-5 py-4">
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.status === 'Active' ? 'bg-emerald-500/15 text-emerald-400' :
-                                            r.status === 'Maintenance' ? 'bg-amber-500/15 text-amber-400' :
-                                                'bg-red-500/15 text-red-400'
+                                        r.status === 'Maintenance' ? 'bg-amber-500/15 text-amber-400' :
+                                            'bg-red-500/15 text-red-400'
                                         }`}>{r.status}</span>
                                 </td>
                                 <td className="px-5 py-4 text-right text-slate-400">{r._count?.drillingEntries || 0}</td>
@@ -256,7 +331,10 @@ function ProjectManagement() {
                             <input type="number" step="0.01" value={form.contractedRate} onChange={e => setForm(f => ({ ...f, contractedRate: e.target.value }))} className={inputClass} />
                         </div>
                     </div>
-                    <button type="submit" className="px-6 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold">Save Project</button>
+                    <button type="submit" className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold text-sm shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all">
+                        <Save className="h-4 w-4" />
+                        Save Project
+                    </button>
                 </form>
             )}
 

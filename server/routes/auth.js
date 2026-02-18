@@ -147,4 +147,47 @@ router.post('/change-password', async (req, res) => {
     }
 });
 
+// Admin-only: Create new user
+router.post('/register', async (req, res) => {
+    try {
+        if (!req.session.userId || req.session.userRole !== 'Admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const { name, email, password, role } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Name, email, and password are required' });
+        }
+
+        const validRoles = ['Admin', 'Supervisor', 'Driller', 'Viewer'];
+        if (role && !validRoles.includes(role)) {
+            return res.status(400).json({ error: `Role must be one of: ${validRoles.join(', ')}` });
+        }
+
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing) {
+            return res.status(409).json({ error: 'A user with this email already exists' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email,
+                password: hashedPassword,
+                role: role || 'Viewer',
+                mustChangePassword: true,
+            },
+            select: { id: true, name: true, email: true, role: true, createdAt: true }
+        });
+
+        res.status(201).json(user);
+    } catch (error) {
+        console.error('Register error:', error);
+        res.status(500).json({ error: 'Failed to create user' });
+    }
+});
+
 module.exports = router;
