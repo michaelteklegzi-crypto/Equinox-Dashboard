@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export const generateActionItemsPDF = (personName, actions) => {
     const doc = new jsPDF();
@@ -54,7 +54,7 @@ export const generateActionItemsPDF = (personName, actions) => {
     ]);
 
     // Add table
-    doc.autoTable({
+    autoTable(doc, {
         startY: 68,
         head: [['#', 'Title', 'Status', 'Priority', 'Category', 'Meeting Date', 'Target Date']],
         body: tableData,
@@ -195,7 +195,7 @@ export const generateDrillingPDF = (report) => {
             shift.notes || '-'
         ]);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: currentY + 5,
             head: [['Shift', 'Date', 'Supervisor', 'Crew', 'Notes']],
             body: shiftData,
@@ -217,7 +217,7 @@ export const generateDrillingPDF = (report) => {
             log.description
         ]);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: currentY + 5,
             head: [['Category', 'Time Range', 'Hours', 'Description']],
             body: downtimeData,

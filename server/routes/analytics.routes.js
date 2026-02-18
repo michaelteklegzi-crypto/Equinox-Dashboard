@@ -76,6 +76,23 @@ router.get('/production', async (req, res) => {
             dailyMap[d].npt += e.nptHours || 0;
         });
 
+        // Comparison Trend
+        const comparisonEntries = await prisma.drillingEntry.findMany({
+            where,
+            select: { date: true, rigId: true, metersDrilled: true },
+            orderBy: { date: 'asc' },
+        });
+
+        const compMap = {};
+        comparisonEntries.forEach(e => {
+            const d = new Date(e.date).toISOString().split('T')[0];
+            if (!compMap[d]) compMap[d] = { date: d };
+            const rigName = rigMap[e.rigId]?.name || 'Unknown';
+            compMap[d][rigName] = (compMap[d][rigName] || 0) + e.metersDrilled;
+        });
+
+        const comparisonTrend = Object.values(compMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+
         res.json({
             totals: {
                 totalMeters: totals._sum.metersDrilled || 0,
@@ -88,6 +105,7 @@ router.get('/production', async (req, res) => {
             rigBreakdown,
             projectBreakdown,
             dailyTrend: Object.values(dailyMap),
+            comparisonTrend,
         });
     } catch (error) {
         console.error('Production analytics error:', error);

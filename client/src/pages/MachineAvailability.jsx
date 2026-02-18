@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Download, FileText, Calendar, Filter, Activity, Clock, AlertTriangle, CheckCircle, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
 import axios from 'axios';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#3b82f6', '#8b5cf6', '#64748b'];
 
@@ -80,7 +80,7 @@ export default function MachineAvailability() {
         doc.text(`Total Meters: ${s.totalMeters}m`, 140, 40);
 
         // Table
-        doc.autoTable({
+        autoTable(doc, {
             startY: 50,
             head: [['Date', 'Rig', 'Drill(h)', 'Mech(h)', 'Ops(h)', 'Avail %', 'Util %']],
             body: data.dailyBreakdown.map(d => [
@@ -109,11 +109,11 @@ export default function MachineAvailability() {
                     <p className="text-sm text-slate-500 mt-1">Downtime analysis and fleet utilization metrics</p>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={handleExportCSV} className="btn-secondary flex items-center gap-2">
-                        <FileSpreadsheet className="h-4 w-4" /> Export CSV
+                    <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-all text-sm font-medium">
+                        <FileSpreadsheet className="h-4 w-4 text-green-500" /> Export CSV
                     </button>
-                    <button onClick={handleExportPDF} className="btn-primary flex items-center gap-2">
-                        <FileText className="h-4 w-4" /> Export PDF
+                    <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-all text-sm font-medium">
+                        <FileText className="h-4 w-4 text-orange-500" /> Export PDF
                     </button>
                 </div>
             </div>
@@ -123,26 +123,26 @@ export default function MachineAvailability() {
                 <div>
                     <label className="text-xs text-slate-500 uppercase font-medium mb-1 block">Date Range</label>
                     <div className="flex gap-2">
-                        <input type="date" value={filters.startDate} onChange={e => setFilters({ ...filters, startDate: e.target.value })} className={selectClass} />
+                        <input type="date" value={filters.startDate} onChange={e => setFilters(prev => ({ ...prev, startDate: e.target.value }))} className={selectClass} />
                         <span className="self-center text-slate-600">-</span>
-                        <input type="date" value={filters.endDate} onChange={e => setFilters({ ...filters, endDate: e.target.value })} className={selectClass} />
+                        <input type="date" value={filters.endDate} onChange={e => setFilters(prev => ({ ...prev, endDate: e.target.value }))} className={selectClass} />
                     </div>
                 </div>
                 <div>
                     <label className="text-xs text-slate-500 uppercase font-medium mb-1 block">Rig</label>
-                    <select value={filters.rigId} onChange={e => setFilters({ ...filters, rigId: e.target.value })} className={selectClass}>
+                    <select value={filters.rigId} onChange={e => setFilters(prev => ({ ...prev, rigId: e.target.value }))} className={selectClass}>
                         <option value="">All Rigs</option>
                         {rigs.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                 </div>
                 <div>
                     <label className="text-xs text-slate-500 uppercase font-medium mb-1 block">Project</label>
-                    <select value={filters.projectId} onChange={e => setFilters({ ...filters, projectId: e.target.value })} className={selectClass}>
+                    <select value={filters.projectId} onChange={e => setFilters(prev => ({ ...prev, projectId: e.target.value }))} className={selectClass}>
                         <option value="">All Projects</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                 </div>
-                <button onClick={fetchReport} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-colors ml-auto">
+                <button onClick={fetchReport} className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all ml-auto hover:scale-[1.02] active:scale-[0.98]">
                     Apply Filters
                 </button>
             </div>
@@ -186,7 +186,7 @@ export default function MachineAvailability() {
 
                         <ChartCard title="Daily Availability Trend" className="lg:col-span-2">
                             <ResponsiveContainer width="100%" height={250}>
-                                <LineChart data={data.dailyBreakdown}>
+                                <LineChart data={data.dailyBreakdown.map(i => ({ ...i }))}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                                     <XAxis dataKey="date" tickFormatter={d => d.split('T')[0].slice(5)} tick={{ fill: '#64748b', fontSize: 10 }} />
                                     <YAxis domain={[0, 100]} tick={{ fill: '#64748b' }} />

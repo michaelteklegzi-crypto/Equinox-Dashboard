@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Clock, DollarSign, Wrench, Download, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import axios from 'axios';
 
 const COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#14b8a6', '#f59e0b', '#6366f1'];
@@ -66,6 +68,34 @@ export default function Analytics() {
         window.open(`/api/analytics/export/csv?${q}`, '_blank');
     };
 
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text('Equinox Analytics Report', 14, 20);
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 28);
+
+        if (tab === 'production' && prodData) {
+            doc.text(`Total Meters: ${prodData.totals.totalMeters}`, 14, 40);
+            autoTable(doc, {
+                startY: 50,
+                head: [['Rig', 'Meters', 'Fuel', 'Entries']],
+                body: prodData.rigBreakdown.map(r => [r.rigName, r.totalMeters, r.totalFuel, r.entries]),
+                theme: 'striped'
+            });
+        } else if (tab === 'downtime' && dtData) {
+            doc.text('Downtime Analysis', 14, 40);
+            autoTable(doc, {
+                startY: 50,
+                head: [['Category', 'Hours', 'Count']],
+                body: dtData.categoryBreakdown.map(c => [c.category, c.hours, c.count]),
+                theme: 'striped'
+            });
+        }
+
+        doc.save(`analytics_${tab}_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     const selectClass = "px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50";
 
     return (
@@ -75,11 +105,14 @@ export default function Analytics() {
                     <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
                     <p className="text-sm text-slate-500 mt-1">Fleet performance intelligence</p>
                 </div>
-                <button onClick={handleExportCSV}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-300 text-sm font-medium hover:bg-slate-700/60 transition-all">
-                    <Download className="h-4 w-4" />
-                    Export CSV
-                </button>
+                <div className="flex gap-2">
+                    <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-all text-sm font-medium">
+                        <FileSpreadsheet className="h-4 w-4 text-green-500" /> Export CSV
+                    </button>
+                    <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-all text-sm font-medium">
+                        <Download className="h-4 w-4 text-orange-500" /> Export PDF
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -138,20 +171,21 @@ export default function Analytics() {
 
 // ============ PRODUCTION TAB ============
 function ProductionTab({ data }) {
-    const { totals, rigBreakdown, projectBreakdown, dailyTrend } = data;
+    const { totals, rigBreakdown, projectBreakdown, dailyTrend, comparisonTrend } = data;
+    const rigKeys = comparisonTrend && comparisonTrend.length > 0 ? Object.keys(comparisonTrend[0]).filter(k => k !== 'date') : [];
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPI label="Total Meters" value={`${totals.totalMeters.toLocaleString()}m`} />
                 <KPI label="Avg / Entry" value={`${totals.avgMetersPerEntry}m`} />
                 <KPI label="Total Entries" value={totals.totalEntries} />
-                <KPI label="Best Rig" value={rigBreakdown.sort((a, b) => b.totalMeters - a.totalMeters)[0]?.rigName || '—'} />
+                <KPI label="Best Rig" value={[...rigBreakdown].sort((a, b) => b.totalMeters - a.totalMeters)[0]?.rigName || '—'} />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <ChartCard title="Meters by Rig">
                     {rigBreakdown.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={rigBreakdown} barSize={32}>
+                            <BarChart data={rigBreakdown.map(i => ({ ...i }))} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                                 <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
@@ -164,12 +198,31 @@ function ProductionTab({ data }) {
                 <ChartCard title="Daily Production Trend">
                     {dailyTrend.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                            <LineChart data={dailyTrend}>
+                            <LineChart data={dailyTrend.map(i => ({ ...i }))}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                                 <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
                                 <Tooltip contentStyle={ttStyle} />
                                 <Line type="monotone" dataKey="meters" stroke="#f97316" strokeWidth={2} dot={{ fill: '#f97316', r: 3 }} name="Meters" />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : <Empty />}
+                </ChartCard>
+            </div>
+
+            <div className="mt-6">
+                <ChartCard title="Multi-Rig Comparison (Meters)">
+                    {comparisonTrend && comparisonTrend.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={comparisonTrend.map(i => ({ ...i }))}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px' }} />
+                                <Legend />
+                                {rigKeys.map((key, index) => (
+                                    <Line key={key} type="monotone" dataKey={key} stroke={COLORS[index % COLORS.length]} strokeWidth={2} dot={false} />
+                                ))}
                             </LineChart>
                         </ResponsiveContainer>
                     ) : <Empty />}
@@ -216,14 +269,14 @@ function DowntimeTab({ data }) {
                 <KPI label="Total NPT" value={`${totalHours.toFixed(1)} hrs`} />
                 <KPI label="Categories" value={categoryBreakdown.length} />
                 <KPI label="Total Incidents" value={categoryBreakdown.reduce((s, c) => s + c.count, 0)} />
-                <KPI label="Worst Category" value={categoryBreakdown.sort((a, b) => b.hours - a.hours)[0]?.category || '—'} />
+                <KPI label="Worst Category" value={[...categoryBreakdown].sort((a, b) => b.hours - a.hours)[0]?.category || '—'} />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <ChartCard title="NPT by Category">
                     {categoryBreakdown.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
                             <PieChart>
-                                <Pie data={categoryBreakdown} dataKey="hours" nameKey="category" cx="50%" cy="50%" outerRadius={100} label>
+                                <Pie data={categoryBreakdown.map(i => ({ ...i }))} dataKey="hours" nameKey="category" cx="50%" cy="50%" outerRadius={100} label>
                                     {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={ttStyle} />
@@ -235,7 +288,7 @@ function DowntimeTab({ data }) {
                 <ChartCard title="NPT by Rig">
                     {rigNpt.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={rigNpt} barSize={32}>
+                            <BarChart data={rigNpt.map(i => ({ ...i }))} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                                 <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
@@ -272,7 +325,7 @@ function FinancialTab({ data }) {
                 <ChartCard title="Fuel Consumption by Rig">
                     {rigBreakdown.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={rigBreakdown} barSize={32}>
+                            <BarChart data={rigBreakdown.map(i => ({ ...i }))} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                                 <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
@@ -285,7 +338,7 @@ function FinancialTab({ data }) {
                 <ChartCard title="Fuel Cost by Rig">
                     {rigBreakdown.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={rigBreakdown} barSize={32}>
+                            <BarChart data={rigBreakdown.map(i => ({ ...i }))} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                                 <XAxis dataKey="rigName" tick={{ fill: '#64748b', fontSize: 11 }} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
@@ -309,13 +362,13 @@ function MaintenanceTab({ data }) {
                 <KPI label="Total Logs" value={totalLogs} />
                 <KPI label="Rigs Serviced" value={rigFrequency.length} />
                 <KPI label="Total Maint. Cost" value={`$${rigFrequency.reduce((s, r) => s + r.totalCost, 0).toLocaleString()}`} />
-                <KPI label="Most Serviced" value={rigFrequency.sort((a, b) => b.count - a.count)[0]?.name || '—'} />
+                <KPI label="Most Serviced" value={[...rigFrequency].sort((a, b) => b.count - a.count)[0]?.name || '—'} />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <ChartCard title="Maintenance Frequency by Rig">
                     {rigFrequency.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={rigFrequency} barSize={32}>
+                            <BarChart data={rigFrequency.map(i => ({ ...i }))} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                                 <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
