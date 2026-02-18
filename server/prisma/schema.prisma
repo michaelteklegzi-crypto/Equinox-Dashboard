@@ -11,6 +11,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============ SESSION ============
+
 model Session {
   id        String   @id
   sid       String   @unique
@@ -18,207 +20,193 @@ model Session {
   expiresAt DateTime
 }
 
+// ============ USERS & RBAC ============
+
 model User {
-  id                String       @id @default(uuid())
-  name              String
-  email             String       @unique
-  password          String       // Hashed password
-  role              String       @default("User") // 'Admin' | 'User' | 'Supervisor' | 'Clerk'
-  mustChangePassword Boolean     @default(false)
-  lastLogin         DateTime?
-  createdAt         DateTime     @default(now())
-  
+  id                 String    @id @default(uuid())
+  name               String
+  email              String    @unique
+  password           String
+  role               String    @default("Viewer") // 'Admin' | 'Supervisor' | 'Operator' | 'Viewer'
+  mustChangePassword Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  lastLogin          DateTime?
+  createdAt          DateTime  @default(now())
+
   // Relations
-  assignedActions ActionItem[] @relation("ResponsiblePerson")
-  createdActions  ActionItem[] @relation("ActionCreatedBy")
-  createdNotes    Note[]
-  auditLogs       AuditLog[]
-  
-  // New Relations
-  shiftReports    ShiftReport[]
-  dailyReports    DailyDrillingReport[]
-  maintenanceLogs MaintenanceLog[]
-  incidentReports IncidentReport[]
+  drillingEntries    DrillingEntry[]
+  maintenanceLogs    MaintenanceLog[]
+  incidentReports    IncidentReport[]
+  auditLogs          AuditLog[]
 }
 
-model ActionItem {
-  id                   String    @id @default(uuid())
-  title                String
-  description          String?
-  category             String    // 'Operational' | 'Strategic' | 'Admin'
-  priority             String    // 'High' | 'Medium' | 'Low'
-  status               String    @default("Not Started") // 'Not Started' | 'Ongoing' | 'Completed' | 'Delayed' | 'Paused'
-  
-  meetingDate          DateTime
-  targetCompletionDate DateTime?
-  
-  responsiblePersonId  String
-  responsiblePerson    User      @relation("ResponsiblePerson", fields: [responsiblePersonId], references: [id])
-  
-  createdById          String
-  createdBy            User      @relation("ActionCreatedBy", fields: [createdById], references: [id])
-  
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  
-  notes                Note[]
-  auditLogs            AuditLog[]
-}
-
-model Note {
-  id           String     @id @default(uuid())
-  content      String
-  actionItemId String
-  actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
-  
-  createdById  String
-  createdBy    User       @relation(fields: [createdById], references: [id])
-  
-  createdAt    DateTime   @default(now())
-}
-
-model AuditLog {
-  id           String     @id @default(uuid())
-  actionItemId String?
-  actionItem   ActionItem? @relation(fields: [actionItemId], references: [id])
-  
-  // Polymorphic-like relation support (optional, or just use string descriptions)
-  entityType   String?    // 'ActionItem', 'DailyReport', etc.
-  entityId     String?
-  
-  changedField String
-  oldValue     String?
-  newValue     String?
-  
-  changedById  String
-  changedBy    User       @relation(fields: [changedById], references: [id])
-  
-  changedAt    DateTime   @default(now())
-}
-
-// --- EQUINOX PHASE 1 MODELS ---
-
-// --- EQUINOX PHASE 3: ENTERPRISE FLEET ---
+// ============ FLEET ============
 
 model Rig {
-  id        String   @id @default(uuid())
-  name      String   // "Rig 01", "Rig 12"
-  site      String   // "North Field", "South Field", "West Field"
-  type      String   // "High Spec", "Standard", "Aging", "New Build"
-  status    String   @default("Active") // "Active", "Maintenance", "Stacked"
-  
-  dailyReports DailyDrillingReport[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String    @id @default(uuid())
+  name                 String    @unique // "Rig 01", "Rig 12"
+  type                 String    // "RC" | "Diamond" | "GC"
+  site                 String?   // "North Field", "South Field"
+  operationalCapacity  Float?    // Max meters/day
+  commissionDate       DateTime?
+  status               String    @default("Active") // "Active" | "Maintenance" | "Retired"
+
+  // Financial defaults (can be overridden per project)
+  defaultCostPerMeter  Float?
+
+  drillingEntries      DrillingEntry[]
+  maintenanceLogs      MaintenanceLog[]
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
-model DailyDrillingReport {
-  id              String    @id @default(uuid())
-  reportDate      DateTime
-  
-  rigId           String
-  rig             Rig       @relation(fields: [rigId], references: [id])
-  
-  location        String?
-  
-  // Production Metrics
-  startDepth      Float
-  endDepth        Float
-  totalDrilled    Float     // endDepth - startDepth
-  
-  // Enterprise Metrics
-  dailyCost       Float?    // e.g. $45,000
-  fuelConsumed    Float?    // e.g. 2500 Liters
-  
-  status          String    @default("Draft") // 'Draft', 'Submitted', 'Approved'
-  
-  createdById     String
-  createdBy       User      @relation(fields: [createdById], references: [id])
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  drillingDepths  DrillingDepth[]
-  shiftReports    ShiftReport[]
-  downtimeLogs    DowntimeLog[]
+// ============ PROJECTS ============
+
+model Project {
+  id               String    @id @default(uuid())
+  name             String
+  clientName       String?
+  location         String?
+  startDate        DateTime?
+  endDate          DateTime?
+  contractedRate   Float?    // Rate per meter from client
+  status           String    @default("Active") // "Active" | "Completed" | "On Hold"
+
+  drillingEntries  DrillingEntry[]
+  financialParams  FinancialParam[]
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
-model ShiftReport {
-  id              String    @id @default(uuid())
-  shiftType       String    // 'Day', 'Night'
-  date            DateTime
-  
-  dailyReportId   String
-  dailyReport     DailyDrillingReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
-  
-  crewAssigned    String?   // JSON or Checkbox string of crew
-  supervisorName  String?
-  
-  notes           String?
-  
-  createdById     String
-  createdBy       User      @relation(fields: [createdById], references: [id])
-  
-  createdAt       DateTime  @default(now())
+// ============ DRILLING ENTRIES ============
+
+model DrillingEntry {
+  id                String    @id @default(uuid())
+  date              DateTime
+  shift             String    // "Day" | "Night"
+
+  rigId             String
+  rig               Rig       @relation(fields: [rigId], references: [id])
+
+  projectId         String
+  project           Project   @relation(fields: [projectId], references: [id])
+
+  // Production
+  metersDrilled     Float
+  nptHours          Float     @default(0)
+
+  // Downtime
+  downtimeCategory  String?   // "Mechanical" | "Operational" | "Weather" | "Safety" | "WaitingOnParts"
+
+  // Costs
+  fuelConsumed      Float?    // Liters
+  consumablesCost   Float?    // USD
+
+  // Metadata
+  remarks           String?
+  supervisorName    String?
+  status            String    @default("Submitted") // "Draft" | "Submitted" | "Approved"
+
+  createdById       String
+  createdBy         User      @relation(fields: [createdById], references: [id])
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([date])
+  @@index([rigId])
+  @@index([projectId])
+  @@index([date, rigId])
 }
 
-model DrillingDepth {
-  id              String    @id @default(uuid())
-  dailyReportId   String
-  dailyReport     DailyDrillingReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
-  
-  timeStart       DateTime
-  timeEnd         DateTime
-  depthStart      Float
-  depthEnd        Float
-  activityCode    String?   // 'Drilling', 'Tripping', etc.
-  description     String?
+// ============ FINANCIAL PARAMETERS ============
+
+model FinancialParam {
+  id                String    @id @default(uuid())
+  name              String    // "Global Default", "Rig-01 Override", etc.
+  scope             String    @default("global") // "global" | "rig" | "project"
+
+  rigId             String?   // If scope = "rig"
+  projectId         String?   // If scope = "project"
+  project           Project?  @relation(fields: [projectId], references: [id])
+
+  costPerMeter      Float?
+  fuelCostFactor    Float?    // Cost per liter
+  consumablesFactor Float?    // Multiplier
+  laborCostFactor   Float?    // Cost per hour
+
+  isActive          Boolean   @default(true)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
-model DowntimeLog {
-  id              String    @id @default(uuid())
-  dailyReportId   String?
-  dailyReport     DailyDrillingReport? @relation(fields: [dailyReportId], references: [id])
-  
-  category        String    // 'Mechanical', 'Operational', 'Weather', 'WaitingOnParts', 'Safety'
-  startTime       DateTime
-  endTime         DateTime?
-  durationHours   Float?
-  
-  description     String
-  equipmentId     String?   // Optional link to equipment
-  
-  createdAt       DateTime  @default(now())
-}
+// ============ MAINTENANCE ============
 
 model MaintenanceLog {
   id              String    @id @default(uuid())
   equipmentName   String
-  maintenanceType String    // 'Preventive', 'Corrective'
+  maintenanceType String    // "Preventive" | "Corrective"
   description     String
-  
+
+  rigId           String?
+  rig             Rig?      @relation(fields: [rigId], references: [id])
+
   cost            Float?
   hoursSpent      Float?
-  
   performedBy     String?
   datePerformed   DateTime
-  
+
   createdById     String
   createdBy       User      @relation(fields: [createdById], references: [id])
-  
+
   createdAt       DateTime  @default(now())
 }
 
+// ============ INCIDENTS ============
+
 model IncidentReport {
   id              String    @id @default(uuid())
-  incidentType    String    // 'Safety', 'Environmental', 'EquipmentDamage'
+  incidentType    String    // "Safety" | "Environmental" | "EquipmentDamage"
   dateOccurred    DateTime
   description     String
-  severity        String    // 'Low', 'Medium', 'High', 'Critical'
-  
+  severity        String    // "Low" | "Medium" | "High" | "Critical"
+
   reportedById    String
   reportedBy      User      @relation(fields: [reportedById], references: [id])
-  
+
   createdAt       DateTime  @default(now())
+}
+
+// ============ DOWNTIME (STANDALONE) ============
+
+model DowntimeLog {
+  id              String    @id @default(uuid())
+  category        String    // "Mechanical" | "Operational" | "Weather" | "WaitingOnParts" | "Safety"
+  startTime       DateTime
+  endTime         DateTime?
+  durationHours   Float?
+  description     String
+  equipmentId     String?
+
+  createdAt       DateTime  @default(now())
+}
+
+// ============ AUDIT LOG ============
+
+model AuditLog {
+  id            String    @id @default(uuid())
+  entityType    String    // "DrillingEntry" | "User" | "FinancialParam" | "Rig" | "Project"
+  entityId      String?
+  action        String    // "CREATE" | "UPDATE" | "DELETE"
+  changedField  String?
+  oldValue      String?
+  newValue      String?
+
+  changedById   String
+  changedBy     User      @relation(fields: [changedById], references: [id])
+
+  changedAt     DateTime  @default(now())
 }

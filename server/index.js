@@ -15,10 +15,11 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 
 // Route imports
-const actionRoutes = require('./routes/actions');
-const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
-const exportRoutes = require('./routes/export');
+const userRoutes = require('./routes/users');
+const rigsRoutes = require('./routes/rigs.routes');
+const projectsRoutes = require('./routes/projects.routes');
+const drillingRoutes = require('./routes/drilling.routes');
 const reportRoutes = require('./routes/report.routes');
 const maintenanceRoutes = require('./routes/maintenance.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
@@ -44,7 +45,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Health check (before session middleware)
+// Health check (before session)
 app.get('/api/health-check', async (req, res) => {
     try {
         const userCount = await prisma.user.count();
@@ -59,10 +60,7 @@ app.get('/api/ping', (req, res) => {
         status: 'pong',
         timestamp: new Date().toISOString(),
         hasDbUrl: !!process.env.DATABASE_URL,
-        dbUrlPreview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'NOT SET',
-        hasSessionSecret: !!process.env.SESSION_SECRET,
         nodeEnv: process.env.NODE_ENV || 'NOT SET',
-        envKeys: Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('SESSION') || k.includes('NODE_ENV'))
     });
 });
 
@@ -74,7 +72,7 @@ app.use(session({
         dbRecordIdIsSessionId: true,
         dbRecordIdFunction: undefined,
     }),
-    secret: process.env.SESSION_SECRET || 'equinox-dashboard-secret-key-change-in-production',
+    secret: process.env.SESSION_SECRET || 'equinox-dashboard-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -86,14 +84,15 @@ app.use(session({
 }));
 
 app.get('/', (req, res) => {
-    res.send('Equinox API Running');
+    res.send('Equinox Fleet API Running');
 });
 
 // Routes
-app.use('/api/actions', actionRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/export', exportRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/rigs', rigsRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/drilling', drillingRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/analytics', analyticsRoutes);

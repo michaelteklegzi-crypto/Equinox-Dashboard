@@ -1,12 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import ActionItemDetail from './pages/ActionItemDetail';
-import Reports from './pages/Reports';
-import DrillingReports from './pages/DrillingReports'; // New
-import ReportDetail from './pages/ReportDetail'; // New
-import MaintenanceReports from './pages/MaintenanceReports'; // New
+import CommandCenter from './pages/CommandCenter';
+import DrillingOperations from './pages/DrillingOperations';
+import MaintenanceReports from './pages/MaintenanceReports';
+import Analytics from './pages/Analytics';
+import Admin from './pages/Admin';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './context/ToastContext';
@@ -22,35 +21,14 @@ function App() {
             <Route path="/" element={
               <ProtectedRoute>
                 <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/action/:id" element={
-              <ProtectedRoute>
-                <Layout>
-                  <ActionItemDetail />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/reports" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Reports />
+                  <CommandCenter />
                 </Layout>
               </ProtectedRoute>
             } />
             <Route path="/drilling" element={
               <ProtectedRoute>
                 <Layout>
-                  <DrillingReports />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/drilling/:id" element={
-              <ProtectedRoute>
-                <Layout>
-                  <ReportDetail />
+                  <DrillingOperations />
                 </Layout>
               </ProtectedRoute>
             } />
@@ -58,6 +36,20 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <MaintenanceReports />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Analytics />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Admin />
                 </Layout>
               </ProtectedRoute>
             } />
