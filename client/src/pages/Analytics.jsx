@@ -172,8 +172,8 @@ export default function Analytics() {
 // ============ PRODUCTION TAB ============
 function ProductionTab({ data }) {
     const { totals, rigBreakdown, projectBreakdown, dailyTrend, comparisonTrend } = data;
-    // Dynamic keys for multi-rig comparison
-    const rigKeys = comparisonTrend && comparisonTrend.length > 0 ? Object.keys(comparisonTrend[0]).filter(k => k !== 'date') : [];
+    // Dynamic keys for multi-rig comparison: Collect ALL unique keys from ALL data points
+    const rigKeys = comparisonTrend ? Array.from(new Set(comparisonTrend.flatMap(d => Object.keys(d).filter(k => k !== 'date')))) : [];
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
