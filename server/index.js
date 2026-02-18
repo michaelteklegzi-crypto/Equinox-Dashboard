@@ -34,6 +34,29 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Basic health check - MOVED BEFORE SESSION TO DIAGNOSE DB/SESSION ISSUES
+app.get('/api/health-check', async (req, res) => {
+    try {
+        // Test DB Connection
+        const userCount = await prisma.user.count();
+        res.json({
+            status: 'ok',
+            timestamp: new Date(),
+            db: 'connected',
+            userCount,
+            env: process.env.NODE_ENV
+        });
+    } catch (error) {
+        console.error('Health Check DB Error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Database connection failed',
+            error: error.message,
+            stack: error.stack
+        });
+    }
+});
+
 // Session middleware - Use Prisma Store
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
@@ -56,14 +79,12 @@ app.use(session({
     }
 }));
 
-// Basic health check
+
 app.get('/', (req, res) => {
     res.send('Equinox API Running');
 });
 
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date() });
-});
+// app.get('/api/health'...) removed as replaced by /api/health-check above
 
 app.use('/api/actions', actionRoutes);
 app.use('/api/users', userRoutes);
@@ -72,6 +93,16 @@ app.use('/api/export', exportRoutes);
 app.use('/api/reports', reportRoutes); // New
 app.use('/api/maintenance', maintenanceRoutes); // New
 app.use('/api/analytics', analyticsRoutes); // New
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error('Global Server Error:', err);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: err.message,
+        stack: isProduction ? '🥞' : err.stack
+    });
+});
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
