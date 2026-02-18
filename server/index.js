@@ -2,14 +2,16 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
-const { PrismaClient } = require('@prisma/client');
+// const { PrismaClient } = require('@prisma/client');
 // Prisma Session Store (Uses existing Prisma Client connection)
+/*
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
+*/
 
 const app = express();
 // Required for Vercel (behind proxy) to detect HTTPS
 app.set('trust proxy', 1);
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
@@ -57,6 +59,7 @@ app.get('/api/health-check', async (req, res) => {
     }
 });
 
+/*
 // Session middleware - Use Prisma Store
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
@@ -78,13 +81,14 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
+*/
 
 // Simple Health Check (No DB) - To verify Server Start
 app.get('/api/ping', (req, res) => {
     res.json({
         status: 'pong',
         message: 'Server is running',
-        hasDbUrl: !!process.env.DATABASE_URL,
+        dbStatus: 'DISABLED_FOR_DEBUG',
         nodeEnv: process.env.NODE_ENV
     });
 });
