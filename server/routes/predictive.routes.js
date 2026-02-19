@@ -118,9 +118,13 @@ router.get('/forecast', async (req, res) => {
         }
 
         // 6. Financial Bridge
-        // Estimate revenue/margin based on financial params or defaults
-        const totalForecastMeters = forecast.reduce((s, f) => s + f.forecast, 0);
-        const params = await prisma.financialParam.findFirst({ where: rigId ? { rigId } : {} });
+        let params = null;
+        try {
+            params = await prisma.financialParam.findFirst({ where: rigId ? { rigId } : {} });
+        } catch (err) {
+            console.error('Failed to fetch financial params:', err);
+            // Verify if table exists or connection issue, but proceed with defaults to avoid crash
+        }
 
         const costPerMeter = params?.costPerMeter || 150; // default
         const revenuePerMeter = 250; // hypothetical contract rate
@@ -149,7 +153,11 @@ router.get('/forecast', async (req, res) => {
 
     } catch (error) {
         console.error('Predictive analytics error:', error);
-        res.status(500).json({ error: 'Failed to generate forecast' });
+        res.status(500).json({
+            error: 'Failed to generate forecast',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
