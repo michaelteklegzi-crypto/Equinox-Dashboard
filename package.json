@@ -10,6 +10,7 @@
         "dotenv": "^17.2.4",
         "express": "^5.2.1",
         "express-session": "^1.19.0",
+        "ml-random-forest": "^2.1.0",
         "nodemailer": "^8.0.1",
         "pg": "^8.18.0",
         "simple-statistics": "^7.8.8"

@@ -156,6 +156,60 @@ export default function DailyReportForm({ onSuccess }) {
                     </div>
                 </div>
 
+                {/* AI Forecasting Parameters */}
+                <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        AI Forecasting Parameters
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Formation</label>
+                            <select
+                                name="formation"
+                                value={formData.formation || ''}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                            >
+                                <option value="">Select...</option>
+                                <option value="Sandstone">Sandstone</option>
+                                <option value="Shale">Shale</option>
+                                <option value="Limestone">Limestone</option>
+                                <option value="Basalt">Basalt</option>
+                                <option value="Mixed">Mixed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Bit Type</label>
+                            <select
+                                name="bitType"
+                                value={formData.bitType || ''}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                            >
+                                <option value="">Select...</option>
+                                <option value="PDC">PDC</option>
+                                <option value="Tricone">Tricone</option>
+                                <option value="Roller Cone">Roller Cone</option>
+                                <option value="Diamond">Diamond</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Mud Type</label>
+                            <select
+                                name="mudType"
+                                value={formData.mudType || ''}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                            >
+                                <option value="">Select...</option>
+                                <option value="Water-Based">Water-Based</option>
+                                <option value="Oil-Based">Oil-Based</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Calculation Display */}
                 <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-between border border-slate-200">
                     <div className="flex items-center gap-2 text-slate-600">

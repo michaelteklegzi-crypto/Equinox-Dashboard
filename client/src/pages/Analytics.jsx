@@ -439,20 +439,16 @@ function MaintenanceTab({ data }) {
     );
 }
 
-// ============ PREDICTIVE TAB ============
+// ============ PREDICTIVE TAB (HYBRID AI) ============
 function PredictiveTab({ data, scenario, setScenario }) {
     const { actuals, forecast, risk, financials } = data;
 
     // Combine actuals and forecast for the chart
-    // We need a continuous line. The last actual point should connect to first forecast point.
-    // The backend provides 'forecast' starting from tomorrow.
-
     const chartData = [
         ...actuals.map(d => ({ ...d, type: 'actual' })),
-        // Add last actual as first forecast point to connect lines?
-        // OR just rely on Recharts.
         ...forecast.map(d => ({ ...d, type: 'forecast' }))
     ];
+
 
     const getScenarioColor = () => {
         if (scenario === 'optimistic') return '#10b981';

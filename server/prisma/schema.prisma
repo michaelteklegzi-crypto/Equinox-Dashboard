@@ -97,6 +97,8 @@ model DrillingEntry {
   metersDrilled     Float
   holeDepth         Float?    // Current hole depth
   bitType           String?   // "PDC", "Tricone", etc.
+  formation         String?   // "Sandstone", "Shale", "Mixed"
+  mudType           String?   // "Water-Based", "Oil-Based"
 
   // Hours Breakdown (Must sum to totalShiftHours)
   totalShiftHours   Float     @default(12)
@@ -227,4 +229,16 @@ model AuditLog {
   changedBy     User      @relation(fields: [changedById], references: [id])
 
   changedAt     DateTime  @default(now())
+}
+
+// ============ WEATHER INTELLIGENCE ============
+
+model WeatherLog {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique
+  rainfall    Float    // mm
+  temperature Float    // Celsius
+  humidity    Float?
+  isRainy     Boolean  // Derived flag
+  createdAt   DateTime @default(now())
 }
