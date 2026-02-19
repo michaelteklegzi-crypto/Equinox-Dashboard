@@ -42,7 +42,24 @@ router.get('/forecast', async (req, res) => {
         }));
 
         if (dataPoints.length < 5) {
-            return res.json({ status: 'low_confidence', message: 'Insufficient data for reliable forecast', actuals: actuals, forecast: [] });
+            return res.json({
+                status: 'low_confidence',
+                message: 'Insufficient data for reliable forecast (need at least 5 days of history)',
+                actuals: actuals,
+                forecast: [],
+                risk: {
+                    score: 0,
+                    status: 'Gray',
+                    message: 'Insufficient data to calculate risk',
+                    primaryFactor: 'N/A'
+                },
+                financials: {
+                    projectedRevenue: 0,
+                    projectedMargin: 0,
+                    marginPercent: 0,
+                    explanation: 'Cannot project financials without historical trend data.'
+                }
+            });
         }
 
         // 2. Linear Regression
