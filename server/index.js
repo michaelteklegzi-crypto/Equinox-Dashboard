@@ -70,7 +70,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
     store: new PrismaSessionStore(prisma, {
         checkPeriod: 2 * 60 * 1000,
-        dbRecordIdIsSessionId: true,
+        dbRecordIdIsSessionId: false,
         dbRecordIdFunction: undefined,
     }),
     secret: process.env.SESSION_SECRET || 'equinox-dashboard-secret-key',
