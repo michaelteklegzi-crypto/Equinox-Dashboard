@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 export default function Login() {
     const { login, isAuthenticated } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
     // If already authenticated, redirect to dashboard
     if (isAuthenticated) {
@@ -15,8 +17,9 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        // Auto-login with Admin credentials for demo
-        const result = await login('admin@equinox.com', '0987654321');
+
+        // Use state values instead of hardcoded demo credentials
+        const result = await login(email, password);
 
         if (!result.success) {
             setLoading(false);
@@ -53,7 +56,30 @@ export default function Login() {
                 </div>
 
                 <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                placeholder="name@company.com"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                placeholder="••••••••"
+                                required
+                            />
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}
@@ -62,12 +88,12 @@ export default function Login() {
                             {loading ? (
                                 <>
                                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                    <span>Entering System...</span>
+                                    <span>Verifying...</span>
                                 </>
                             ) : (
                                 <>
                                     <LogIn className="h-5 w-5" />
-                                    <span>Enter Dashboard</span>
+                                    <span>Sign In</span>
                                 </>
                             )}
                         </button>
