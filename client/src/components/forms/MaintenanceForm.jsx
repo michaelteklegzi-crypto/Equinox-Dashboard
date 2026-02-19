@@ -27,34 +27,49 @@ export default function MaintenanceForm({ onSuccess }) {
         e.preventDefault();
         setIsSubmitting(true);
 
+        const payload = {
+            ...formData,
+            cost: parseFloat(formData.cost) || 0,
+            hoursSpent: parseFloat(formData.hoursSpent) || 0,
+            performedBy: user?.name,
+            createdById: user?.id
+        };
+
         try {
-            await axios.post('/api/maintenance', {
-                ...formData,
-                cost: parseFloat(formData.cost) || 0,
-                hoursSpent: parseFloat(formData.hoursSpent) || 0,
-                performedBy: user?.name,
-                createdById: user?.id
-            });
-
+            await axios.post('/api/maintenance', payload);
             showToast('Maintenance log saved successfully', 'success');
-
-            setFormData({
-                equipmentName: '',
-                maintenanceType: 'Preventive',
-                description: '',
-                cost: '',
-                hoursSpent: '',
-                datePerformed: new Date().toISOString().split('T')[0]
-            });
-
+            resetForm();
             if (onSuccess) onSuccess();
 
         } catch (error) {
             console.error('Error saving maintenance log:', error);
-            showToast('Failed to save log', 'error');
+
+            // Offline Handling
+            if (!navigator.onLine || error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+                const offlineLogs = JSON.parse(localStorage.getItem('offline_maintenance_logs') || '[]');
+                offlineLogs.push({ ...payload, offlineId: Date.now() });
+                localStorage.setItem('offline_maintenance_logs', JSON.stringify(offlineLogs));
+
+                showToast('Offline: Log saved locally. Will sync when online.', 'info');
+                resetForm();
+                if (onSuccess) onSuccess(); // Treat as success for UI
+            } else {
+                showToast('Failed to save log: ' + (error.response?.data?.error || error.message), 'error');
+            }
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            equipmentName: '',
+            maintenanceType: 'Preventive',
+            description: '',
+            cost: '',
+            hoursSpent: '',
+            datePerformed: new Date().toISOString().split('T')[0]
+        });
     };
 
     return (

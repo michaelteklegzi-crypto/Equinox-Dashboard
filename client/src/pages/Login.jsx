@@ -4,13 +4,16 @@ import { LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-    const { login, isAuthenticated } = useAuth();
+    const { login, isAuthenticated, user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    // If already authenticated, redirect to dashboard
+    // If already authenticated, redirect based on role
     if (isAuthenticated) {
+        if (user?.role === 'Maintenance') {
+            return <Navigate to="/maintenance" replace />;
+        }
         return <Navigate to="/" replace />;
     }
 
@@ -28,11 +31,20 @@ export default function Login() {
             const errorMsg = typeof result.error === 'object' ? JSON.stringify(result.error) : result.error;
             alert(`Login Failed: ${errorMsg || "Unknown Error"}`);
         }
-        // If success, Redirect handled by AuthContext/App
+        if (result.success) {
+            if (result.user?.role === 'Maintenance') {
+                // Navigate will handle it, but wait.. Layout handles navigation?
+                // No, Login is separate. We need to manually navigate if navigate hook is used.
+                // But Login.jsx doesn't have navigate hook? 
+                // Ah, Login.jsx uses `if (isAuthenticated) return <Navigate to="/" ... />`
+                // This component re-renders when `isAuthenticated` becomes true.
+                // WE NEED TO CHANGE THAT LOGIC.
+            }
+        }
     };
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+        <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-slate-900">
             {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
                 <div
@@ -58,23 +70,23 @@ export default function Login() {
                 <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-8">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                            <label className="block text-sm font-bold text-slate-800 mb-1">Email Address</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                className="w-full px-4 py-2 bg-slate-800 text-white border border-slate-700 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder-slate-400"
                                 placeholder="name@company.com"
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                            <label className="block text-sm font-bold text-slate-800 mb-1">Password</label>
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                className="w-full px-4 py-2 bg-slate-800 text-white border border-slate-700 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder-slate-400"
                                 placeholder="••••••••"
                                 required
                             />

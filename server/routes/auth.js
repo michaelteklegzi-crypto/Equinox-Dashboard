@@ -26,6 +26,11 @@ router.post('/login', async (req, res) => {
         // Verify password
         const isValidPassword = await bcrypt.compare(password, user.password);
 
+        // DEBUG LOGGING
+        const fs = require('fs');
+        const logMsg = `${new Date().toISOString()} - Login Attempt: ${email} | UserFound: ${!!user} | PasswordValid: ${isValidPassword} | StoredHash: ${user.password.substring(0, 10)}... | InputPwdLen: ${password.length}\n`;
+        fs.appendFileSync('login-debug.log', logMsg);
+
         if (!isValidPassword) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
@@ -160,7 +165,7 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'Name, email, and password are required' });
         }
 
-        const validRoles = ['Admin', 'Supervisor', 'Driller', 'Viewer'];
+        const validRoles = ['Admin', 'Supervisor', 'Driller', 'Viewer', 'Maintenance'];
         if (role && !validRoles.includes(role)) {
             return res.status(400).json({ error: `Role must be one of: ${validRoles.join(', ')}` });
         }

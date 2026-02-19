@@ -18,7 +18,7 @@ export default function DrillingOperations() {
             if (filter.projectId) params.append('projectId', filter.projectId);
             if (filter.shift) params.append('shift', filter.shift);
             const res = await axios.get(`/api/drilling?${params}`, { withCredentials: true });
-            setEntries(res.data);
+            setEntries(res.data.slice(0, 5));
         } catch (err) {
             console.error(err);
         } finally {
@@ -27,6 +27,7 @@ export default function DrillingOperations() {
     };
 
     useEffect(() => {
+        setShowModal(true); // Auto open for data entry focus
         fetchEntries();
         Promise.all([
             axios.get('/api/rigs', { withCredentials: true }),

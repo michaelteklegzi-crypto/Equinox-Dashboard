@@ -10,7 +10,15 @@ import MachineAvailability from './pages/MachineAvailability';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './context/ToastContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Navigate } from 'react-router-dom';
+
+const DashboardRedirect = ({ children }) => {
+  const { user } = useAuth();
+  if (user?.role === 'Maintenance') return <Navigate to="/maintenance" replace />;
+  if (user?.role === 'Driller') return <Navigate to="/drilling" replace />;
+  return children;
+};
 
 function App() {
   return (
@@ -22,7 +30,9 @@ function App() {
             <Route path="/" element={
               <ProtectedRoute>
                 <Layout>
-                  <CommandCenter />
+                  <DashboardRedirect>
+                    <CommandCenter />
+                  </DashboardRedirect>
                 </Layout>
               </ProtectedRoute>
             } />

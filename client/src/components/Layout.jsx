@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Activity, Wrench, BarChart3, Shield, LogOut, Menu, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
@@ -13,12 +13,99 @@ const navItems = [
     { icon: Shield, label: 'Admin', to: '/admin', adminOnly: true },
 ];
 
+import axios from 'axios';
+
 export default function Layout({ children }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { showToast } = useToast();
     const { user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    // Sync Offline Data
+    useEffect(() => {
+        const syncOfflineData = async () => {
+            if (!navigator.onLine) return;
+
+            const offlineLogs = JSON.parse(localStorage.getItem('offline_maintenance_logs') || '[]');
+            if (offlineLogs.length === 0) return;
+
+            showToast(`Syncing ${offlineLogs.length} offline logs...`, 'info');
+
+            const remainingLogs = [];
+            let successCount = 0;
+
+            for (const log of offlineLogs) {
+                try {
+                    // Remove offline-specific fields if any
+                    const { offlineId, ...payload } = log;
+                    await axios.post('/api/maintenance', payload);
+                    successCount++;
+                } catch (err) {
+                    console.error("Failed to sync log:", log, err);
+                    remainingLogs.push(log); // Keep failed ones
+                }
+            }
+
+            localStorage.setItem('offline_maintenance_logs', JSON.stringify(remainingLogs));
+
+            if (successCount > 0) {
+                showToast(`Synced ${successCount} logs successfully`, 'success');
+                // Refresh data if on maintenance page?
+                if (location.pathname === '/maintenance') {
+                    window.location.reload(); // Simple reload to show new data
+                }
+            }
+
+            // Sync Drilling Logs
+            const offlineDrillingLogs = JSON.parse(localStorage.getItem('offline_drilling_logs') || '[]');
+            if (offlineDrillingLogs.length > 0) {
+                showToast(`Syncing ${offlineDrillingLogs.length} drilling logs...`, 'info');
+                const remainingDrilling = [];
+                let drillingSuccess = 0;
+
+                for (const log of offlineDrillingLogs) {
+                    try {
+                        const { offlineId, ...payload } = log;
+                        await axios.post('/api/drilling', payload, { withCredentials: true });
+                        drillingSuccess++;
+                    } catch (err) {
+                        console.error("Failed to sync drilling log:", log, err);
+                        remainingDrilling.push(log);
+                    }
+                }
+                localStorage.setItem('offline_drilling_logs', JSON.stringify(remainingDrilling));
+                if (drillingSuccess > 0) {
+                    showToast(`Synced ${drillingSuccess} drilling logs`, 'success');
+                    if (location.pathname === '/drilling') window.location.reload();
+                }
+            }
+        };
+
+        window.addEventListener('online', syncOfflineData);
+        // Also try on mount if online
+        syncOfflineData();
+
+        // Cache Metadata (Rigs/Projects)
+        const cacheMetadata = async () => {
+            if (!navigator.onLine) return;
+            try {
+                const [r, p] = await Promise.all([
+                    axios.get('/api/rigs', { withCredentials: true }),
+                    axios.get('/api/projects', { withCredentials: true })
+                ]);
+                localStorage.setItem('cached_rigs', JSON.stringify(r.data));
+                localStorage.setItem('cached_projects', JSON.stringify(p.data));
+                showToast(`System Ready: Cached ${r.data.length} rigs, ${p.data.length} projects`, 'success');
+            } catch (e) {
+                console.error('Failed to cache metadata', e);
+                showToast(`Sync Failed: ${e.message}`, 'error');
+            }
+        };
+        cacheMetadata();
+
+        return () => window.removeEventListener('online', syncOfflineData);
+    }, [showToast, location.pathname]);
 
     const handleLogout = async () => {
         const result = await logout();
@@ -31,8 +118,14 @@ export default function Layout({ children }) {
     };
 
     const isAdmin = user?.role === 'Admin';
+    const isMaintenance = user?.role === 'Maintenance';
+    const isDriller = user?.role === 'Driller';
 
-    const filteredNav = navItems.filter(item => !item.adminOnly || isAdmin);
+    const filteredNav = navItems.filter(item => {
+        if (isMaintenance) return item.label === 'Maintenance';
+        if (isDriller) return item.label === 'Drilling Ops';
+        return !item.adminOnly || isAdmin;
+    });
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#0a0e1a]">
@@ -86,6 +179,30 @@ export default function Layout({ children }) {
 
                 {/* User */}
                 <div className="p-4 border-t border-slate-800/60">
+                    <button
+                        onClick={() => {
+                            showToast('Syncing...', 'info');
+                            const cacheMetadata = async () => {
+                                try {
+                                    const [r, p] = await Promise.all([
+                                        axios.get('/api/rigs', { withCredentials: true }),
+                                        axios.get('/api/projects', { withCredentials: true })
+                                    ]);
+                                    localStorage.setItem('cached_rigs', JSON.stringify(r.data));
+                                    localStorage.setItem('cached_projects', JSON.stringify(p.data));
+                                    showToast(`Synced: ${r.data.length} Rigs, ${p.data.length} Projects`, 'success');
+                                } catch (e) {
+                                    console.error('Manual sync failed', e);
+                                    showToast(`Sync Failed: ${e.message}`, 'error');
+                                }
+                            };
+                            cacheMetadata();
+                        }}
+                        className="w-full mb-3 flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-colors text-xs font-medium border border-orange-500/20"
+                    >
+                        <Activity className="h-3 w-3" /> Sync Offline Data
+                    </button>
+
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/40">
                         <div className="h-9 w-9 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
                             {user?.name?.substring(0, 2).toUpperCase() || 'U'}

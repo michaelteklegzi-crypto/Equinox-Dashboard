@@ -57,13 +57,25 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
     const isHoursValid = Math.abs(totalAccounted - (parseFloat(form.totalShiftHours) || 12)) < 0.1;
 
     useEffect(() => {
+        // Load from cache first
+        const cachedRigs = localStorage.getItem('cached_rigs');
+        const cachedProjects = localStorage.getItem('cached_projects');
+        if (cachedRigs) setRigs(JSON.parse(cachedRigs));
+        if (cachedProjects) setProjects(JSON.parse(cachedProjects));
+
+        // Fetch fresh data
         Promise.all([
             axios.get('/api/rigs', { withCredentials: true }),
             axios.get('/api/projects', { withCredentials: true }),
         ]).then(([rigsRes, projRes]) => {
             setRigs(rigsRes.data);
             setProjects(projRes.data);
-        }).catch(console.error);
+            // Update cache
+            localStorage.setItem('cached_rigs', JSON.stringify(rigsRes.data));
+            localStorage.setItem('cached_projects', JSON.stringify(projRes.data));
+        }).catch(err => {
+            console.error('Failed to fetch data, using cache if available', err);
+        });
     }, []);
 
     const handleChange = (e) => {
@@ -84,7 +96,17 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
             showToast('Drilling entry submitted successfully', 'success');
             onSuccess();
         } catch (err) {
-            showToast('Failed to submit entry: ' + (err.response?.data?.error || err.message), 'error');
+            // Offline Handling
+            if (!navigator.onLine || err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+                const offlineLogs = JSON.parse(localStorage.getItem('offline_drilling_logs') || '[]');
+                offlineLogs.push({ ...form, offlineId: Date.now() });
+                localStorage.setItem('offline_drilling_logs', JSON.stringify(offlineLogs));
+
+                showToast('Offline: Entry saved locally. Will sync when online.', 'info');
+                onSuccess();
+            } else {
+                showToast('Failed to submit entry: ' + (err.response?.data?.error || err.message), 'error');
+            }
         } finally {
             setLoading(false);
         }
@@ -96,7 +118,7 @@ export default function DrillingEntryModal({ onClose, onSuccess }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#111827] border border-slate-800/50 shadow-2xl m-4 scale-in">
+            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#111827] border border-slate-800/50 shadow-2xl m-4 scale-in">
                 {/* Header */}
                 <div className="sticky top-0 flex items-center justify-between p-6 border-b border-slate-800/50 bg-[#111827] rounded-t-2xl z-10">
                     <h2 className="text-lg font-bold text-white">New Drilling Entry</h2>

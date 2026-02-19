@@ -169,6 +169,7 @@ function UserManagement() {
                             <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className={inputClass}>
                                 <option value="Driller">Driller</option>
                                 <option value="Supervisor">Supervisor</option>
+                                <option value="Maintenance">Maintenance</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Viewer">Viewer</option>
                             </select>
@@ -565,7 +566,7 @@ function FinancialSettings() {
     const [isEditing, setIsEditing] = useState(false);
     const [selectedId, setSelectedId] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [form, setForm] = useState({ scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '1.5', consumablesFactor: '1.0', laborCostFactor: '1.0' });
+    const [form, setForm] = useState({ name: '', scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '0', consumablesFactor: '0', laborCostFactor: '0' });
     const { showToast } = useToast();
 
     const fetchAll = () => {
@@ -583,7 +584,7 @@ function FinancialSettings() {
     useEffect(() => { fetchAll(); }, []);
 
     const handleCreate = () => {
-        setForm({ scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '1.5', consumablesFactor: '1.0', laborCostFactor: '1.0' });
+        setForm({ name: '', scope: 'global', rigId: '', projectId: '', costPerMeter: '', fuelCostFactor: '0', consumablesFactor: '0', laborCostFactor: '0' });
         setIsEditing(false);
         setSelectedId(null);
         setShowModal(true);
@@ -595,6 +596,7 @@ function FinancialSettings() {
         if (param.projectId) scope = 'project';
 
         setForm({
+            name: param.name || '',
             scope,
             rigId: param.rigId || '',
             projectId: param.projectId || '',
@@ -621,24 +623,30 @@ function FinancialSettings() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validation: Sum of factors = Cost Per Meter
+        const total = parseFloat(form.costPerMeter) || 0;
+        const sum = (parseFloat(form.fuelCostFactor) || 0) + (parseFloat(form.consumablesFactor) || 0) + (parseFloat(form.laborCostFactor) || 0);
+
+        // Allow small floating point margin or strict? User said "equal".
+        if (Math.abs(total - sum) > 0.01) {
+            alert(`Validation Error: The sum of factors (${sum.toFixed(2)}) must equal the Cost Per Meter (${total.toFixed(2)}).`);
+            return;
+        }
+
         setSaving(true);
         try {
             const payload = {
+                name: form.name,
                 costPerMeter: parseFloat(form.costPerMeter) || 0,
-                fuelCostFactor: parseFloat(form.fuelCostFactor) || 1,
-                consumablesFactor: parseFloat(form.consumablesFactor) || 1,
-                laborCostFactor: parseFloat(form.laborCostFactor) || 1,
+                fuelCostFactor: parseFloat(form.fuelCostFactor) || 0,
+                consumablesFactor: parseFloat(form.consumablesFactor) || 0,
+                laborCostFactor: parseFloat(form.laborCostFactor) || 0,
             };
             if (!isEditing) {
-                // Scope only matters on creation usually, or editing if we allow changing scope?
-                // API allows changing rigId/projectId? My API routes didn't explicitly forbid it but `update` payload usually ignores undefined.
-                // But for `update`, typically we might just update values, not scope.
-                // Let's assume we allow updating everything provided.
                 if (form.scope === 'rig' && form.rigId) payload.rigId = form.rigId;
                 if (form.scope === 'project' && form.projectId) payload.projectId = form.projectId;
             } else {
-                // For edit, keep existing scope or update it?
-                // Simple implementation: send everything.
                 if (form.scope === 'rig') { payload.rigId = form.rigId; payload.projectId = null; }
                 else if (form.scope === 'project') { payload.projectId = form.projectId; payload.rigId = null; }
                 else { payload.rigId = null; payload.projectId = null; }
@@ -673,6 +681,10 @@ function FinancialSettings() {
                     <h3 className="text-sm font-semibold text-slate-300 mb-2">Financial Parameter</h3>
                     <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Parameter Name *</label>
+                            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputClass} required placeholder="e.g. Q1 Standard Rates" />
+                        </div>
+                        <div className="md:col-span-2">
                             <label className="block text-xs text-slate-500 uppercase mb-1">Scope *</label>
                             <select value={form.scope} onChange={e => setForm(f => ({ ...f, scope: e.target.value }))} className={inputClass}>
                                 <option value="global">Global</option>
@@ -700,18 +712,18 @@ function FinancialSettings() {
                         )}
                         <div>
                             <label className="block text-xs text-slate-500 uppercase mb-1">Cost/Meter ($)</label>
-                            <input type="number" step="0.01" value={form.costPerMeter} onChange={e => setForm(f => ({ ...f, costPerMeter: e.target.value }))} className={inputClass} placeholder="e.g. 12.50" />
+                            <input type="number" step="0.01" value={form.costPerMeter} onChange={e => setForm(f => ({ ...f, costPerMeter: e.target.value }))} className={inputClass} placeholder="e.g. 100.00" />
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-500 uppercase mb-1">Fuel Factor ($/L)</label>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Fuel Component ($)</label>
                             <input type="number" step="0.01" value={form.fuelCostFactor} onChange={e => setForm(f => ({ ...f, fuelCostFactor: e.target.value }))} className={inputClass} />
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-500 uppercase mb-1">Consumables Factor</label>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Consumables ($)</label>
                             <input type="number" step="0.01" value={form.consumablesFactor} onChange={e => setForm(f => ({ ...f, consumablesFactor: e.target.value }))} className={inputClass} />
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-500 uppercase mb-1">Labor Factor</label>
+                            <label className="block text-xs text-slate-500 uppercase mb-1">Labor Component ($)</label>
                             <input type="number" step="0.01" value={form.laborCostFactor} onChange={e => setForm(f => ({ ...f, laborCostFactor: e.target.value }))} className={inputClass} />
                         </div>
                     </div>

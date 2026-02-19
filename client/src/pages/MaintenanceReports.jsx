@@ -11,12 +11,13 @@ export default function MaintenanceReports() {
 
     useEffect(() => {
         fetchLogs();
+        setShowForm(true); // Auto open
     }, []);
 
     const fetchLogs = async () => {
         try {
             const res = await axios.get('/api/maintenance');
-            setLogs(res.data);
+            setLogs(res.data.slice(0, 5));
         } catch (error) {
             console.error('Failed to fetch maintenance logs', error);
         }
@@ -35,24 +36,26 @@ export default function MaintenanceReports() {
                     <p className="text-slate-500 mt-2">Track equipment status, maintenance logs, and downtime.</p>
                 </div>
                 <button
-                    onClick={() => setShowForm(!showForm)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all ${showForm
-                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'
-                        }`}
+                    onClick={() => setShowForm(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200"
                 >
-                    {showForm ? 'Cancel' : (
-                        <>
-                            <Plus className="h-4 w-4" />
-                            Log Maintenance
-                        </>
-                    )}
+                    <Plus className="h-4 w-4" />
+                    Log Maintenance
                 </button>
             </header>
 
             {showForm && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                    <MaintenanceForm onSuccess={handleSuccess} />
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)} />
+                    <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl scale-in">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-slate-900">New Maintenance entry</h3>
+                                <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600">Close</button>
+                            </div>
+                            <MaintenanceForm onSuccess={handleSuccess} />
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -92,8 +95,8 @@ export default function MaintenanceReports() {
                                         <td className="px-6 py-4 font-medium text-slate-700">{log.equipmentName}</td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${log.maintenanceType === 'Preventive' ? 'bg-green-100 text-green-700' :
-                                                    log.maintenanceType === 'Corrective' ? 'bg-red-100 text-red-700' :
-                                                        'bg-blue-100 text-blue-700'
+                                                log.maintenanceType === 'Corrective' ? 'bg-red-100 text-red-700' :
+                                                    'bg-blue-100 text-blue-700'
                                                 }`}>
                                                 {log.maintenanceType}
                                             </span>

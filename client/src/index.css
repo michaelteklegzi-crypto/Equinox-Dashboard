@@ -181,6 +181,16 @@ select option {
   color: #e2e8f0;
 }
 
+/* Autofill Override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
+  -webkit-text-fill-color: white !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* ============ SIDEBAR TRANSITIONS ============ */
 .sidebar-nav-item {
   position: relative;

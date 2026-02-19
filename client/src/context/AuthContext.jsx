@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
         try {
             const response = await axios.post('/api/auth/login', { email, password });
             setUser(response.data.user);
-            return { success: true };
+            return { success: true, user: response.data.user };
         } catch (error) {
             console.error("Auth Error:", error);
             const detailedError = error.response?.data?.error || error.response?.data || error.message;

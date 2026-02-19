@@ -22,12 +22,20 @@ router.put('/:id', async (req, res) => {
             return res.status(403).json({ error: 'Admin access required' });
         }
 
-        const { name, email, role, isActive } = req.body;
-        // Prevent changing own role/status to lock oneself out? (Optional safety)
+        const { name, email, role, isActive, password } = req.body;
+
+        const updateData = { name, email, role, isActive };
+
+        // If password is provided, hash it and add to update data
+        if (password && password.trim() !== '') {
+            const bcrypt = require('bcryptjs');
+            updateData.password = await bcrypt.hash(password, 10);
+            updateData.mustChangePassword = true; // Force change on next login if desired, or false
+        }
 
         const user = await prisma.user.update({
             where: { id: req.params.id },
-            data: { name, email, role, isActive }
+            data: updateData
         });
 
         // Remove password from response
