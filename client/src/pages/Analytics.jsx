@@ -478,6 +478,16 @@ function PredictiveTab({ data, scenario, setScenario }) {
             </div>
 
             {/* Financial Bridge */}
+            {data.status === 'low_confidence' && (
+                <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-200 text-sm flex items-start gap-3">
+                    <div className="bg-orange-500/20 p-2 rounded-lg"><Clock className="h-4 w-4" /></div>
+                    <div>
+                        <p className="font-semibold mb-1">Insufficient Historical Data</p>
+                        <p className="opacity-80">{data.message || 'We need at least 5 days of production history to generate reliable forecasts.'}</p>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <KPI label="Projected Revenue (90 Days)" value={`$${Number(financials.projectedRevenue).toLocaleString()}`} />
                 <KPI label="Projected Margin" value={`${financials.marginPercent}%`} />
@@ -503,7 +513,7 @@ function PredictiveTab({ data, scenario, setScenario }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                    <ChartCard title="90-Day Production Roadmap">
+                    <ChartCard title={data.status === 'low_confidence' ? "Production Roadmap (Waiting for Data)" : "90-Day Production Roadmap"}>
                         <ResponsiveContainer width="100%" height={320}>
                             <ComposedChart data={chartData}>
                                 <defs>
