@@ -31,9 +31,11 @@ export function AuthProvider({ children }) {
             setUser(response.data.user);
             return { success: true };
         } catch (error) {
+            console.error("Auth Error:", error);
+            const detailedError = error.response?.data?.error || error.response?.data || error.message;
             return {
                 success: false,
-                error: error.response?.data?.error || 'Login failed'
+                error: typeof detailedError === 'object' ? JSON.stringify(detailedError) : detailedError
             };
         }
     };
