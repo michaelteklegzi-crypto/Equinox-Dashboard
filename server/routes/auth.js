@@ -14,9 +14,11 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
+        const normalizedEmail = email.toLowerCase().trim();
+
         // Find user by email
         const user = await prisma.user.findUnique({
-            where: { email }
+            where: { email: normalizedEmail }
         });
 
         if (!user) {
