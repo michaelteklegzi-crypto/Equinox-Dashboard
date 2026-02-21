@@ -1,8 +1,9 @@
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 // Fallback env vars for Vercel (env var UI not saving correctly)
-if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = "postgresql://postgres.zwdupsecfokebveprnyr:vTVJMQpzq4XheAWF@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
+// If Vercel env fails to load or loads an old invalid string, we forcefully supply the working one
+if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('vTVJMQpzq4XheAWF') || !process.env.DATABASE_URL.includes('pgbouncer')) {
+    process.env.DATABASE_URL = "postgresql://postgres.zwdupsecfokebveprnyr:dyfcug-botjiz-0pumJy@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
 }
 if (!process.env.SESSION_SECRET) {
     process.env.SESSION_SECRET = "equinox-dashboard-secret-change-in-production";
