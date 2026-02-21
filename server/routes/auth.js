@@ -29,9 +29,8 @@ router.post('/login', async (req, res) => {
         const isValidPassword = await bcrypt.compare(password, user.password);
 
         // DEBUG LOGGING
-        const fs = require('fs');
-        const logMsg = `${new Date().toISOString()} - Login Attempt: ${email} | UserFound: ${!!user} | PasswordValid: ${isValidPassword} | StoredHash: ${user.password.substring(0, 10)}... | InputPwdLen: ${password.length}\n`;
-        fs.appendFileSync('login-debug.log', logMsg);
+        const logMsg = `${new Date().toISOString()} - Login Attempt: ${email} | UserFound: ${!!user} | PasswordValid: ${isValidPassword} | StoredHash: ${user.password.substring(0, 10)}... | InputPwdLen: ${password.length}`;
+        console.log(logMsg);
 
         if (!isValidPassword) {
             return res.status(401).json({ error: 'Invalid email or password' });
