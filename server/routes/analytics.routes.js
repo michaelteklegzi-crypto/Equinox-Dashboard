@@ -6,12 +6,17 @@ const prisma = require('../db');
 // ============ PRODUCTION ANALYTICS ============
 router.get('/production', async (req, res) => {
     try {
-        const { startDate, endDate, rigId, projectId } = req.query;
+        const { startDate, endDate, rigId, projectId, rigType, compInterval } = req.query;
         const where = {};
         if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
         if (endDate) where.date = { ...where.date, lte: new Date(endDate) };
-        if (rigId) where.rigId = rigId;
         if (projectId) where.projectId = projectId;
+        if (rigId) {
+            where.rigId = rigId;
+        } else if (rigType) {
+            const typeRigs = await prisma.rig.findMany({ where: { type: rigType }, select: { id: true } });
+            where.rigId = { in: typeRigs.map(r => r.id) };
+        }
 
         // Overall aggregates
         const totals = await prisma.drillingEntry.aggregate({
@@ -85,13 +90,24 @@ router.get('/production', async (req, res) => {
 
         const compMap = {};
         comparisonEntries.forEach(e => {
-            const d = new Date(e.date).toISOString().split('T')[0];
-            if (!compMap[d]) compMap[d] = { date: d };
+            const entryDate = new Date(e.date);
+            let dStr;
+            if (compInterval === 'weekly') {
+                const diff = entryDate.getDate() - entryDate.getDay();
+                const startOfWeek = new Date(entryDate.setDate(diff));
+                dStr = startOfWeek.toISOString().split('T')[0];
+            } else {
+                dStr = entryDate.toISOString().split('T')[0];
+            }
+            if (!compMap[dStr]) compMap[dStr] = { date: dStr };
             const rigName = rigMap[e.rigId]?.name || 'Unknown';
-            compMap[d][rigName] = (compMap[d][rigName] || 0) + e.metersDrilled;
+            compMap[dStr][rigName] = (compMap[dStr][rigName] || 0) + e.metersDrilled;
         });
 
-        const comparisonTrend = Object.values(compMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+        let comparisonTrend = Object.values(compMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+        if (compInterval === 'daily' || !compInterval) {
+            comparisonTrend = comparisonTrend.slice(-7);
+        }
 
         res.json({
             totals: {
@@ -281,14 +297,14 @@ router.get('/maintenance', async (req, res) => {
     try {
         const { startDate, endDate, rigId } = req.query;
         const where = {};
-        if (startDate) where.date = { gte: new Date(startDate) };
-        if (endDate) where.date = { lte: new Date(endDate) };
+        if (startDate) where.datePerformed = { ...(where.datePerformed || {}), gte: new Date(startDate) };
+        if (endDate) where.datePerformed = { ...(where.datePerformed || {}), lte: new Date(endDate) };
         if (rigId) where.rigId = rigId;
 
         const logs = await prisma.maintenanceLog.findMany({
             where,
             include: { rig: { select: { name: true } } },
-            orderBy: { date: 'desc' },
+            orderBy: { datePerformed: 'desc' },
             take: 100,
         });
 
@@ -306,10 +322,10 @@ router.get('/maintenance', async (req, res) => {
             recentLogs: logs.slice(0, 20).map(l => ({
                 id: l.id,
                 rig: l.rig?.name,
-                type: l.type,
+                type: l.maintenanceType,
                 description: l.description,
                 cost: l.cost,
-                date: l.date,
+                date: l.datePerformed,
             })),
             rigFrequency: Object.values(rigFreq),
         });

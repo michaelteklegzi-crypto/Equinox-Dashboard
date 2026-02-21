@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Activity, Wrench, BarChart3, Shield, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Activity, Wrench, BarChart3, Shield, LogOut, Menu, X, FileInput, Gauge, Sparkles } from 'lucide-react';
+import AIDEPanel from './AIDEPanel';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,8 @@ const navItems = [
     { icon: Activity, label: 'Availability', to: '/reports/availability' },
     { icon: BarChart3, label: 'Analytics', to: '/analytics' },
     { icon: Shield, label: 'Admin', to: '/admin', adminOnly: true },
+    { icon: FileInput, label: 'Data Ingestion', to: '/ingestion', adminOnly: true },
+    { icon: Gauge, label: 'Advisor', to: '/advisor' },
 ];
 
 import axios from 'axios';
@@ -21,6 +24,7 @@ export default function Layout({ children }) {
     const { showToast } = useToast();
     const { user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [aideOpen, setAideOpen] = useState(false);
 
     // Sync Offline Data
     useEffect(() => {
@@ -96,7 +100,11 @@ export default function Layout({ children }) {
                 ]);
                 localStorage.setItem('cached_rigs', JSON.stringify(r.data));
                 localStorage.setItem('cached_projects', JSON.stringify(p.data));
-                showToast(`System Ready: Cached ${r.data.length} rigs, ${p.data.length} projects`, 'success');
+
+                // Show "System Ready" only for non-admins, lasts 1 minute (60000ms)
+                if (user?.role !== 'Admin') {
+                    showToast(`System Ready: Cached ${r.data.length} rigs, ${p.data.length} projects`, 'success', 60000);
+                }
             } catch (e) {
                 console.error('Failed to cache metadata', e);
                 showToast(`Sync Failed: ${e.message}`, 'error');
@@ -154,7 +162,7 @@ export default function Layout({ children }) {
                         </div>
                         <div>
                             <h1 className="text-sm font-bold text-white tracking-wide">EQUINOX</h1>
-                            <p className="text-[10px] text-slate-500 tracking-widest uppercase">Fleet Command</p>
+                            <p className="text-[10px] text-slate-500 tracking-widest uppercase">Rig Command</p>
                         </div>
                     </div>
                 </div>
@@ -231,9 +239,31 @@ export default function Layout({ children }) {
             )}
 
             {/* Main Content */}
-            <main key={location.pathname} className="flex-1 overflow-y-auto page-enter">
+            <main key={location.pathname} className="flex-1 overflow-y-auto page-enter relative">
+                {/* AI Assistant Toggle Button */}
+                <button
+                    onClick={() => setAideOpen(true)}
+                    className="ai-fab-btn btn-press"
+                    style={{
+                        position: 'fixed', bottom: 28, right: 28, zIndex: 40,
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '12px 20px', borderRadius: 16, border: 'none',
+                        background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                        color: 'white', fontWeight: 600, fontSize: 13,
+                        cursor: 'pointer', transition: 'transform 0.2s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    title="Open AI Assistant"
+                >
+                    <Sparkles size={18} />
+                    <span>Ask AI</span>
+                </button>
                 {children}
             </main>
+
+            {/* AIDE Chat Panel */}
+            <AIDEPanel isOpen={aideOpen} onClose={() => setAideOpen(false)} />
         </div>
     );
 }

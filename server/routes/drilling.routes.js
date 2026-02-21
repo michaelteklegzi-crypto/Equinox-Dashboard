@@ -113,6 +113,79 @@ router.post('/', async (req, res) => {
     }
 });
 
+// PUT update drilling entry
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            date, shift, rigId, projectId,
+            metersDrilled, nptHours, downtimeCategory,
+            drillingHours, mechanicalDowntime, operationalDelay,
+            weatherDowntime, safetyDowntime, waitingOnParts, standbyHours,
+            totalShiftHours, holeDepth, bitType,
+            fuelConsumed, consumablesCost, remarks, supervisorName
+        } = req.body;
+
+        // Check entry exists
+        const existing = await prisma.drillingEntry.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ error: 'Entry not found' });
+        }
+
+        // Build update data (only include provided fields)
+        const data = {};
+        if (date !== undefined) data.date = new Date(date);
+        if (shift !== undefined) data.shift = shift;
+        if (rigId !== undefined) data.rigId = rigId;
+        if (projectId !== undefined) data.projectId = projectId;
+        if (metersDrilled !== undefined) data.metersDrilled = parseFloat(metersDrilled);
+        if (drillingHours !== undefined) data.drillingHours = parseFloat(drillingHours) || 0;
+        if (mechanicalDowntime !== undefined) data.mechanicalDowntime = parseFloat(mechanicalDowntime) || 0;
+        if (operationalDelay !== undefined) data.operationalDelay = parseFloat(operationalDelay) || 0;
+        if (weatherDowntime !== undefined) data.weatherDowntime = parseFloat(weatherDowntime) || 0;
+        if (safetyDowntime !== undefined) data.safetyDowntime = parseFloat(safetyDowntime) || 0;
+        if (waitingOnParts !== undefined) data.waitingOnParts = parseFloat(waitingOnParts) || 0;
+        if (standbyHours !== undefined) data.standbyHours = parseFloat(standbyHours) || 0;
+        if (totalShiftHours !== undefined) data.totalShiftHours = parseFloat(totalShiftHours);
+        if (holeDepth !== undefined) data.holeDepth = holeDepth ? parseFloat(holeDepth) : null;
+        if (bitType !== undefined) data.bitType = bitType || null;
+        if (nptHours !== undefined) data.nptHours = parseFloat(nptHours) || 0;
+        if (downtimeCategory !== undefined) data.downtimeCategory = downtimeCategory || null;
+        if (fuelConsumed !== undefined) data.fuelConsumed = fuelConsumed ? parseFloat(fuelConsumed) : null;
+        if (consumablesCost !== undefined) data.consumablesCost = consumablesCost ? parseFloat(consumablesCost) : null;
+        if (remarks !== undefined) data.remarks = remarks || null;
+        if (supervisorName !== undefined) data.supervisorName = supervisorName || null;
+
+        const entry = await prisma.drillingEntry.update({
+            where: { id },
+            data,
+            include: {
+                rig: { select: { name: true } },
+                project: { select: { name: true } },
+                createdBy: { select: { name: true } }
+            }
+        });
+        res.json(entry);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// DELETE drilling entry
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const existing = await prisma.drillingEntry.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ error: 'Entry not found' });
+        }
+        await prisma.drillingEntry.delete({ where: { id } });
+        res.json({ success: true, message: 'Entry deleted' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET dashboard KPIs (server-side aggregation)
 router.get('/kpis', async (req, res) => {
     try {

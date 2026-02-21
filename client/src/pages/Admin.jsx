@@ -32,7 +32,7 @@ export default function Admin() {
         <div className="p-6 md:p-8 space-y-6">
             <div>
                 <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
-                <p className="text-sm text-slate-500 mt-1">Manage fleet resources and settings</p>
+                <p className="text-sm text-slate-500 mt-1">Manage rig resources and settings</p>
             </div>
 
             <div className="flex gap-1 p-1 rounded-xl bg-slate-800/30 w-fit">

@@ -19,6 +19,7 @@ export default function Analytics() {
     const [rigs, setRigs] = useState([]);
     const [projects, setProjects] = useState([]);
     const [filters, setFilters] = useState({ startDate: '', endDate: '', rigId: '', projectId: '' });
+    const [compInterval, setCompInterval] = useState('daily');
     const [prodData, setProdData] = useState(null);
     const [dtData, setDtData] = useState(null);
     const [finData, setFinData] = useState(null);
@@ -27,11 +28,23 @@ export default function Analytics() {
     const [scenario, setScenario] = useState('normal');
     const [loading, setLoading] = useState(false);
 
+    const [error, setError] = useState(null);
+
     useEffect(() => {
-        Promise.all([
-            axios.get('/api/rigs', { withCredentials: true }),
-            axios.get('/api/projects', { withCredentials: true }),
-        ]).then(([r, p]) => { setRigs(r.data); setProjects(p.data); });
+        const fetchMeta = async () => {
+            try {
+                const [r, p] = await Promise.all([
+                    axios.get('/api/rigs', { withCredentials: true }),
+                    axios.get('/api/projects', { withCredentials: true }),
+                ]);
+                setRigs(r.data);
+                setProjects(p.data);
+            } catch (err) {
+                console.error("Meta fetch failed", err);
+                setError("Failed to load Rigs/Projects. Please refresh.");
+            }
+        };
+        fetchMeta();
     }, []);
 
     const buildParams = () => {
@@ -40,34 +53,39 @@ export default function Analytics() {
         if (filters.endDate) params.append('endDate', filters.endDate);
         if (filters.rigId) params.append('rigId', filters.rigId);
         if (filters.projectId) params.append('projectId', filters.projectId);
+        params.append('compInterval', compInterval);
         return params.toString();
     };
 
     const fetchTab = async (t) => {
         setLoading(true);
+        setError(null);
         try {
             const q = buildParams();
+            let res;
             if (t === 'production') {
-                const res = await axios.get(`/api/analytics/production?${q}`, { withCredentials: true });
+                res = await axios.get(`/api/analytics/production?${q}`, { withCredentials: true });
                 setProdData(res.data);
             } else if (t === 'downtime') {
-                const res = await axios.get(`/api/analytics/downtime?${q}`, { withCredentials: true });
+                res = await axios.get(`/api/analytics/downtime?${q}`, { withCredentials: true });
                 setDtData(res.data);
             } else if (t === 'financial') {
-                const res = await axios.get(`/api/analytics/financial?${q}`, { withCredentials: true });
+                res = await axios.get(`/api/analytics/financial?${q}`, { withCredentials: true });
                 setFinData(res.data);
             } else if (t === 'maintenance') {
-                const res = await axios.get(`/api/analytics/maintenance?${q}`, { withCredentials: true });
+                res = await axios.get(`/api/analytics/maintenance?${q}`, { withCredentials: true });
                 setMaintData(res.data);
             } else if (t === 'predictive') {
-                const res = await axios.get(`/api/predictive/forecast?${q}&scenario=${scenario}`, { withCredentials: true });
+                res = await axios.get(`/api/predictive/forecast?${q}&scenario=${scenario}`, { withCredentials: true });
                 setPredData(res.data);
             }
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); }
+        } catch (err) {
+            console.error(err);
+            setError(err.response?.data?.error || err.message || "Failed to load data.");
+        } finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchTab(tab); }, [tab, filters, scenario]);
+    useEffect(() => { fetchTab(tab); }, [tab, filters, scenario, compInterval]);
 
     const handleExportCSV = () => {
         const q = buildParams();
@@ -109,7 +127,7 @@ export default function Analytics() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
-                    <p className="text-sm text-slate-500 mt-1">Fleet performance intelligence</p>
+                    <p className="text-sm text-slate-500 mt-1">Rig performance intelligence</p>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-all text-sm font-medium">
@@ -148,15 +166,24 @@ export default function Analytics() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 p-1 rounded-xl bg-slate-800/30 w-fit">
+            <div className="flex flex-wrap gap-2">
                 {TABS.map(t => (
                     <button key={t.key} onClick={() => setTab(t.key)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-orange-500/15 text-orange-400' : 'text-slate-500 hover:text-slate-300'
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all border ${tab === t.key
+                            ? 'bg-orange-500/15 text-orange-400 border-orange-500/30 shadow-lg shadow-orange-500/5'
+                            : 'bg-slate-800/40 text-slate-500 border-slate-700/40 hover:text-slate-300 hover:bg-slate-800/60 hover:border-slate-600/50'
                             }`}>
                         <t.icon className="h-4 w-4" /> {t.label}
                     </button>
                 ))}
             </div>
+
+            {/* Error State */}
+            {error && (
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-sm flex items-center gap-3">
+                    <span className="font-bold">Error:</span> {error}
+                </div>
+            )}
 
             {/* Loading */}
             {loading ? (
@@ -165,7 +192,7 @@ export default function Analytics() {
                 </div>
             ) : (
                 <>
-                    {tab === 'production' && prodData && <ProductionTab data={prodData} />}
+                    {tab === 'production' && prodData && <ProductionTab data={prodData} compInterval={compInterval} setCompInterval={setCompInterval} rigs={rigs} />}
                     {tab === 'downtime' && dtData && <DowntimeTab data={dtData} />}
                     {tab === 'financial' && finData && <FinancialTab data={finData} />}
                     {tab === 'maintenance' && maintData && <MaintenanceTab data={maintData} />}
@@ -177,10 +204,18 @@ export default function Analytics() {
 }
 
 // ============ PRODUCTION TAB ============
-function ProductionTab({ data }) {
+function ProductionTab({ data, compInterval, setCompInterval, rigs }) {
     const { totals, rigBreakdown, projectBreakdown, dailyTrend, comparisonTrend } = data;
+    const [compRigType, setCompRigType] = useState('All');
+
     // Dynamic keys for multi-rig comparison: Collect ALL unique keys from ALL data points
-    const rigKeys = comparisonTrend ? Array.from(new Set(comparisonTrend.flatMap(d => Object.keys(d).filter(k => k !== 'date')))) : [];
+    let rigKeys = comparisonTrend ? Array.from(new Set(comparisonTrend.flatMap(d => Object.keys(d).filter(k => k !== 'date')))) : [];
+
+    // Filter rigKeys based on compRigType selection
+    if (compRigType !== 'All') {
+        const matchingRigNames = rigs.filter(r => r.type === compRigType || r.type?.includes(compRigType)).map(r => r.name);
+        rigKeys = rigKeys.filter(key => matchingRigNames.includes(key));
+    }
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -219,7 +254,42 @@ function ProductionTab({ data }) {
             </div>
 
             <div className="mt-6">
-                <ChartCard title="Multi-Rig Comparison (Meters)">
+                <div className="rounded-2xl bg-[#111827] border border-slate-800/50 p-6 shadow-lg shadow-black/20">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-200">Multi-Rig Comparison</h3>
+                            <p className="text-xs text-slate-500 mt-1">Compare performance trends across rig fleets</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative">
+                                <select
+                                    value={compRigType}
+                                    onChange={(e) => setCompRigType(e.target.value)}
+                                    className="appearance-none pl-4 pr-10 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-slate-300 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50 cursor-pointer transition-colors hover:bg-slate-800"
+                                >
+                                    <option value="All">All Rig Types</option>
+                                    <option value="DD">Diamond Coring (DD)</option>
+                                    <option value="RC">Reverse Circ. (RC)</option>
+                                    <option value="GC">Grade Control (GC)</option>
+                                </select>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs">▼</span>
+                            </div>
+                            <div className="flex bg-slate-800/50 rounded-xl p-1 border border-slate-700/50">
+                                <button
+                                    onClick={() => setCompInterval('daily')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${compInterval === 'daily' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
+                                >
+                                    Daily
+                                </button>
+                                <button
+                                    onClick={() => setCompInterval('weekly')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${compInterval === 'weekly' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
+                                >
+                                    Weekly
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     {comparisonTrend && comparisonTrend.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
                             <LineChart data={comparisonTrend.map(i => ({ ...i }))}>
@@ -229,12 +299,12 @@ function ProductionTab({ data }) {
                                 <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px' }} />
                                 <Legend />
                                 {rigKeys.map((key, index) => (
-                                    <Line key={key} type="monotone" dataKey={key} stroke={COLORS[index % COLORS.length]} strokeWidth={2} dot={false} />
+                                    <Line key={key} type="monotone" dataKey={key} stroke={COLORS[index % COLORS.length]} strokeWidth={2} dot={{ r: 3, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} connectNulls={true} />
                                 ))}
                             </LineChart>
                         </ResponsiveContainer>
                     ) : <Empty />}
-                </ChartCard>
+                </div>
             </div>
             {/* Project breakdown table */}
             {projectBreakdown.length > 0 && (
@@ -459,16 +529,21 @@ function PredictiveTab({ data, scenario, setScenario }) {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex bg-slate-800/50 p-1 rounded-xl">
-                    {['normal', 'optimistic', 'conservative'].map(s => (
-                        <button key={s} onClick={() => setScenario(s)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${scenario === s ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                            {s}
-                        </button>
-                    ))}
+                <div className="relative">
+                    <select
+                        value={scenario}
+                        onChange={(e) => setScenario(e.target.value)}
+                        className="appearance-none pl-7 pr-8 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50 cursor-pointer capitalize"
+                    >
+                        <option value="normal">Normal</option>
+                        <option value="optimistic">Optimistic</option>
+                        <option value="conservative">Conservative</option>
+                    </select>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full shadow-sm" style={{ background: getScenarioColor(), boxShadow: `0 0 6px ${getScenarioColor()}` }}></span>
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">▾</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-700/30">
-                    <span className="w-2 h-2 rounded-full" style={{ background: getScenarioColor() }}></span>
+                    <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: getScenarioColor(), boxShadow: `0 0 8px ${getScenarioColor()}` }}></span>
                     Mode: <span className="text-slate-200 font-medium capitalize">{scenario} Case</span>
                 </div>
             </div>
@@ -519,7 +594,7 @@ function PredictiveTab({ data, scenario, setScenario }) {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} minTickGap={30} />
+                                <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} minTickGap={30} tickFormatter={(val) => val ? String(val).split('T')[0] : ''} />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
                                 <Tooltip contentStyle={ttStyle} />
                                 <Legend />
@@ -572,7 +647,7 @@ function KPI({ label, value }) {
 function ChartCard({ title, children }) {
     return (
         <div className="rounded-2xl bg-[#111827] border border-slate-800/50 p-6">
-            <h3 className="text-sm font-semibold text-slate-300 mb-4">{title}</h3>
+            <div className="text-sm font-semibold text-slate-300 mb-4">{title}</div>
             {children}
         </div>
     );

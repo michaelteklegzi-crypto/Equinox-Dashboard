@@ -60,7 +60,7 @@ export default function Dashboard() {
                         EQUINOX <span className="text-slate-500 font-light">| COMMAND CENTER</span>
                     </h1>
                     <p className="text-slate-400 mt-1 text-sm font-mono">
-                        FLEET STATUS: <span className="text-green-400">OPERATIONAL</span> | 12 RIGS ACTIVE
+                        RIGS STATUS: <span className="text-green-400">OPERATIONAL</span> | 12 RIGS ACTIVE
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -89,7 +89,7 @@ export default function Dashboard() {
                     color="text-green-400"
                 />
                 <KpiCard
-                    title="Fleet NPT (24h)"
+                    title="Rigs NPT (24h)"
                     value={`${kpi.nptHours?.toFixed(1)} hrs`}
                     subtext="Downtime Impact"
                     icon={Clock}
@@ -134,7 +134,7 @@ export default function Dashboard() {
             {/* Fleet Overview Table */}
             <div className="bg-[#161B22] border border-[#30363D] rounded-lg overflow-hidden">
                 <div className="p-6 border-b border-[#30363D] flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-white">Active Fleet Status</h3>
+                    <h3 className="text-lg font-semibold text-white">Active Rigs Status</h3>
                     <span className="text-xs font-mono text-slate-500">LIVE FEED</span>
                 </div>
                 <div className="overflow-x-auto">

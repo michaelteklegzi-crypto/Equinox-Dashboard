@@ -14,8 +14,8 @@ export function useToast() {
 export function ToastProvider({ children }) {
     const [toast, setToast] = useState(null);
 
-    const showToast = (message, type = 'info') => {
-        setToast({ message, type });
+    const showToast = (message, type = 'info', duration = 3500) => {
+        setToast({ message, type, duration });
     };
 
     return (
@@ -25,6 +25,7 @@ export function ToastProvider({ children }) {
                 <Toast
                     message={toast.message}
                     type={toast.type}
+                    duration={toast.duration}
                     onClose={() => setToast(null)}
                 />
             )}

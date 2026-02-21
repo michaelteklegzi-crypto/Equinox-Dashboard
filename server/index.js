@@ -23,6 +23,8 @@ const drillingRoutes = require('./routes/drilling.routes');
 const reportRoutes = require('./routes/report.routes');
 const maintenanceRoutes = require('./routes/maintenance.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const ingestionRoutes = require('./routes/ingestion.routes'); // Phase 1
+// BullMQ/Redis removed — ingestion now processes synchronously
 
 const app = express();
 app.set('trust proxy', 1);
@@ -99,6 +101,11 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/financial-params', require('./routes/financial.routes'));
 app.use('/api/predictive', require('./routes/predictive.routes'));
+app.use('/api/ingest', ingestionRoutes); // Phase 1
+app.use('/api/ai', require('./routes/ai.routes')); // Phase 4
+app.use('/api/advisor', require('./routes/advisor.routes')); // Phase 4
+
+// Ingestion workers now run synchronously — no Redis/BullMQ needed
 
 // Global Error Handler
 app.use((err, req, res, next) => {

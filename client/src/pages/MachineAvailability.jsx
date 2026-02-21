@@ -106,7 +106,7 @@ export default function MachineAvailability() {
                         <Activity className="text-blue-500" />
                         Machine Availability
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1">Downtime analysis and fleet utilization metrics</p>
+                    <p className="text-sm text-slate-500 mt-1">Downtime analysis and rig utilization metrics</p>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-all text-sm font-medium">

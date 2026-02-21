@@ -38,6 +38,7 @@ model User {
   maintenanceLogs    MaintenanceLog[]
   incidentReports    IncidentReport[]
   auditLogs          AuditLog[]
+  fileUploads        ImportStaging[]
 }
 
 // ============ FLEET ============
@@ -56,6 +57,7 @@ model Rig {
 
   drillingEntries      DrillingEntry[]
   maintenanceLogs      MaintenanceLog[]
+  equipment            Equipment[]
 
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -241,4 +243,77 @@ model WeatherLog {
   humidity    Float?
   isRainy     Boolean  // Derived flag
   createdAt   DateTime @default(now())
+}
+
+// ============ OPERATIONAL INTELLIGENCE (PHASE 1) ============
+
+model ModelVersion {
+  id              String   @id @default(uuid())
+  version         String   // e.g. "v1.0.0" or "RF-2023-10-27"
+  trainedAt       DateTime @default(now())
+  mape            Float?   // Mean Absolute Percentage Error (Validation)
+  dataWindow      String?  // "60d"
+  featureSetHash  String?  // unique hash of training data/features used
+  isActive        Boolean  @default(false)
+  
+  forecasts       Forecast[]
+}
+
+model Forecast {
+  id              String   @id @default(uuid())
+  rigId           String
+  date            DateTime // Date being forecasted
+  predictedMeters Float
+  confidenceScore Float
+  
+  modelUsedId     String
+  modelVersion    ModelVersion @relation(fields: [modelUsedId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([rigId, date])
+}
+
+model Equipment {
+  id               String   @id @default(uuid())
+  name             String
+  rigId            String?
+  rig              Rig?     @relation(fields: [rigId], references: [id])
+  
+  mtbfHours        Float?   // Mean Time Between Failures (Manufacturer or Calculated)
+  lastServiceHours Float?   // Engine hours at last service
+  currentHours     Float    @default(0) // Current engine hours reading
+  type             String?  // "Engine", "Pump", "TopDrive", "Generator"
+  currentRiskScore Float?   // 0.0 - 1.0 (Calculated via Logistic Function)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model KPISnapshot {
+  id              String   @id @default(uuid())
+  date            DateTime
+  category        String   // "Global", "RigType:RC", "RigType:Diamond"
+  avgMeters       Float
+  avgAvailability Float
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([date, category])
+}
+
+model ImportStaging {
+  id          String   @id @default(uuid())
+  batchId     String   // Group for transaction
+  rowNumber   Int
+  rawData     Json     // The raw Excel row as JSON
+  status      String   // "Pending", "Valid", "Error", "Imported"
+  errorMsg    String?
+  
+  uploadedById String
+  uploadedBy   User    @relation(fields: [uploadedById], references: [id])
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([batchId])
 }

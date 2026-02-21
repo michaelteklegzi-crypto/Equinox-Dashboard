@@ -102,7 +102,7 @@ async function generateHybridForecast(rigId, futureContext) {
     // 1. Fetch History
     // We need Meters Drilled per day (aggregated)
     const rawHistory = await prisma.drillingEntry.groupBy({
-        by: ['date', 'formation', 'bitType', 'holeDepth'],
+        by: ['date'],
         where: { rigId },
         _sum: { metersDrilled: true, weatherDowntime: true },
         orderBy: { date: 'asc' },
@@ -113,7 +113,7 @@ async function generateHybridForecast(rigId, futureContext) {
     // Join logic is manual in Prisma.
     // For simplicity, we assume `weatherDowntime` is proxy, OR we fetch weather logs.
 
-    if (rawHistory.length < 5) {
+    if (rawHistory.length < 3) {
         return { status: 'low_confidence', forecast: [], risk: { score: 0 } };
     }
 
@@ -156,10 +156,9 @@ async function generateHybridForecast(rigId, futureContext) {
         return {
             meters: val,
             baseline: expected,
-            formation: entry.formation,
-            bit: entry.bitType,
-            depth: entry.holeDepth,
-            // Fetch rain from DB or assume 0 if not logged
+            formation: 'Other',
+            bit: 'Other',
+            depth: 0,
             rain: 0,
             isRainy: false
         };
@@ -168,24 +167,37 @@ async function generateHybridForecast(rigId, futureContext) {
     // 4. ML Adjustment
     const adjustmentFactors = await trainAndPredictAdjustment(processedHistory, futureContext);
 
-    // 5. Final Forecast
+    // 5. Risk Scoring (Moved up for CI calculation)
+    const avgAdj = adjustmentFactors.reduce((a, b) => a + b, 0) / adjustmentFactors.length;
+    const variance = adjustmentFactors.reduce((a, b) => a + Math.pow(b - avgAdj, 2), 0) / adjustmentFactors.length;
+    const riskScore = Math.min(100, Math.round(variance * 1000));
+
+    // 6. Final Forecast & Confidence Intervals
+    // CI Width depends on Risk Score
+    const riskFactor = (riskScore / 100) * 0.5; // Max +/- 50% width at 100% risk
+
     const finalForecast = baselineForecast.map((base, i) => {
         const adj = adjustmentFactors[i] || 1.0;
-        // Dampen extreme adjustments
         const clampedAdj = Math.max(0.5, Math.min(1.5, adj));
+        const prediction = Math.round(base * clampedAdj);
+
+        // CI Calculation
+        const margin = prediction * (0.1 + riskFactor); // Base 10% + Risk Factor
+
         return {
             day: i + 1,
             baseline: Math.round(base),
             adjustment: clampedAdj,
-            prediction: Math.round(base * clampedAdj)
+            prediction: prediction,
+            ciHigh: Math.round(prediction + margin),
+            ciLow: Math.max(0, Math.round(prediction - margin))
         };
     });
 
-    // 6. Risk Scoring
-    // Variance in past adjustment factors implies volatility
-    const avgAdj = adjustmentFactors.reduce((a, b) => a + b, 0) / adjustmentFactors.length;
-    const variance = adjustmentFactors.reduce((a, b) => a + Math.pow(b - avgAdj, 2), 0) / adjustmentFactors.length;
-    const riskScore = Math.min(100, Math.round(variance * 1000)); // Arbitrary scaling
+    // Risk Messaging
+    let riskMessage = "Low volatility detected. Forecast is stable.";
+    if (riskScore > 50) riskMessage = "High volatility based on variable historical adjustments. Plan for contingencies.";
+    else if (riskScore > 20) riskMessage = "Moderate variability detected in drilling performance.";
 
     return {
         status: 'high_confidence',
@@ -193,7 +205,8 @@ async function generateHybridForecast(rigId, futureContext) {
         risk: {
             score: riskScore,
             status: riskScore > 50 ? 'Red' : riskScore > 20 ? 'Yellow' : 'Green',
-            primaryFactor: 'Volatility'
+            primaryFactor: 'Volatility',
+            message: riskMessage
         },
         financials: {
             // Placeholder, route handles this

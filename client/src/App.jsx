@@ -7,7 +7,9 @@ import MaintenanceReports from './pages/MaintenanceReports';
 import Analytics from './pages/Analytics';
 import Admin from './pages/Admin';
 import MachineAvailability from './pages/MachineAvailability';
+import ParameterAdvisor from './pages/ParameterAdvisor';
 import Login from './pages/Login';
+import DataIngestion from './pages/DataIngestion'; // Phase 1
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -68,6 +70,20 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Admin />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/ingestion" element={
+              <ProtectedRoute>
+                <Layout>
+                  <DataIngestion />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/advisor" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ParameterAdvisor />
                 </Layout>
               </ProtectedRoute>
             } />

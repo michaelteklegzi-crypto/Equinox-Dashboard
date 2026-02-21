@@ -21,8 +21,19 @@ router.get('/forecast', async (req, res) => {
         // For now, let's pick the first active rig if not provided, or return error.
         let targetRigId = rigId;
         if (!targetRigId) {
-            const firstRig = await prisma.rig.findFirst({ where: { status: 'Active' } });
-            if (firstRig) targetRigId = firstRig.id;
+            // Find the rig with the MOST drilling history to ensure the ML model has enough data
+            const bestRig = await prisma.drillingEntry.groupBy({
+                by: ['rigId'],
+                _count: { id: true },
+                orderBy: { _count: { id: 'desc' } },
+                take: 1
+            });
+            if (bestRig.length > 0) {
+                targetRigId = bestRig[0].rigId;
+            } else {
+                const firstRig = await prisma.rig.findFirst({ where: { status: 'Active' } });
+                if (firstRig) targetRigId = firstRig.id;
+            }
         }
 
         if (!targetRigId) {
@@ -35,15 +46,27 @@ router.get('/forecast', async (req, res) => {
             });
         }
 
-        const hybridResult = await generateHybridForecast(targetRigId, weatherForecast);
+        let hybridResult;
+        try {
+            hybridResult = await generateHybridForecast(targetRigId, weatherForecast);
+        } catch (mlError) {
+            console.error('ML Forecast Error:', mlError.message);
+            return res.json({
+                status: 'low_confidence',
+                message: 'The forecasting model encountered an error. This usually means there is not enough historical data yet.',
+                forecast: [],
+                actuals: [],
+                risk: { score: 0, status: 'Gray', message: 'Model unavailable', primaryFactor: 'Insufficient data' },
+                financials: { projectedRevenue: 0, projectedMargin: 0, marginPercent: 0, explanation: 'Forecast unavailable — add more production data.' }
+            });
+        }
 
         if (hybridResult.status === 'low_confidence') {
-            // Return early with the formatted low_confidence response from service
-            // But we need to make sure service returns the *structure* we expect.
-            // Service returns { status, forecast, risk, financials? no financials in service low conf payload? }
-            // Let's ensure consistency.
             return res.json({
                 ...hybridResult,
+                actuals: [],
+                forecast: hybridResult.forecast || [],
+                risk: hybridResult.risk || { score: 0, status: 'Gray', message: 'Insufficient data', primaryFactor: 'None' },
                 financials: hybridResult.financials || {
                     projectedRevenue: 0,
                     projectedMargin: 0,
@@ -54,18 +77,12 @@ router.get('/forecast', async (req, res) => {
         }
 
         // 3. Financial Projections
-        // Fetch parameters for this rig
         const params = await prisma.financialParam.findFirst({
             where: { rigId: targetRigId }
         });
 
-        // Defaults if params missing
         const costPerMeter = params?.costPerMeter || 150;
-        const revenuePerMeter = params?.contractedRate || 250; // Use parameter if exists? Schema check: FinancialParam doesn't have revenue. Project does.
-
-        // Fetch Project rate?
-        // Rig might be on multiple projects. Complex.
-        // Simplification: Use $250/m revenue default.
+        const revenuePerMeter = params?.contractedRate || 250;
 
         const totalForecastMeters = hybridResult.forecast.reduce((s, f) => s + f.prediction, 0);
         const projectedRevenue = totalForecastMeters * revenuePerMeter;
@@ -76,16 +93,15 @@ router.get('/forecast', async (req, res) => {
         // 4. Return Final Response
         res.json({
             status: 'high_confidence',
-            actuals: [], // Frontend can fetch actuals from production endpoint or we can add here if needed.
-            // Frontend charts combine 'actuals' and 'forecast'.
-            // If we send empty actuals, chart shows only forecast?
-            // Ideally we send recent actuals too.
+            actuals: [],
             forecast: hybridResult.forecast.map(f => ({
-                day: f.day, // Relative day 1..14
-                date: weatherForecast[f.day - 1]?.date, // Use accurate date
+                day: f.day,
+                date: weatherForecast[f.day - 1]?.date,
                 forecast: f.prediction,
                 baseline: f.baseline,
-                adjustment: f.adjustment
+                adjustment: f.adjustment,
+                ciHigh: f.ciHigh,
+                ciLow: f.ciLow
             })),
             risk: hybridResult.risk,
             financials: {

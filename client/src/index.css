@@ -224,3 +224,20 @@ input:-webkit-autofill:active {
 .recharts-tooltip-wrapper {
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
 }
+
+/* ============ AI FAB BUTTON ============ */
+@keyframes fabPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 6px 24px rgba(249, 115, 22, 0.35);
+  }
+
+  50% {
+    box-shadow: 0 6px 32px rgba(249, 115, 22, 0.55);
+  }
+}
+
+.ai-fab-btn {
+  animation: fabPulse 3s ease-in-out infinite;
+}
