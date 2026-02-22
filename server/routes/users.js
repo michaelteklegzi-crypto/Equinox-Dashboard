@@ -24,7 +24,8 @@ router.put('/:id', async (req, res) => {
 
         const { name, email, role, isActive, password } = req.body;
 
-        const updateData = { name, email, role, isActive };
+        const normalizedEmail = email ? email.toLowerCase().trim() : undefined;
+        const updateData = { name, email: normalizedEmail, role, isActive };
 
         // If password is provided, hash it and add to update data
         if (password && password.trim() !== '') {

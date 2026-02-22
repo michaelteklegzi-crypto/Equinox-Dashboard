@@ -166,12 +166,14 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'Name, email, and password are required' });
         }
 
+        const normalizedEmail = email.toLowerCase().trim();
+
         const validRoles = ['Admin', 'Supervisor', 'Driller', 'Viewer', 'Maintenance'];
         if (role && !validRoles.includes(role)) {
             return res.status(400).json({ error: `Role must be one of: ${validRoles.join(', ')}` });
         }
 
-        const existing = await prisma.user.findUnique({ where: { email } });
+        const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
         if (existing) {
             return res.status(409).json({ error: 'A user with this email already exists' });
         }
@@ -181,7 +183,7 @@ router.post('/register', async (req, res) => {
         const user = await prisma.user.create({
             data: {
                 name,
-                email,
+                email: normalizedEmail,
                 password: hashedPassword,
                 role: role || 'Viewer',
                 mustChangePassword: true,
