@@ -6,6 +6,7 @@ import DrillingEntryModal from '../components/DrillingEntryModal';
 const PER_PAGE = 15;
 
 export default function DrillingOperations() {
+    const [activeTab, setActiveTab] = useState('entry');
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -149,211 +150,234 @@ export default function DrillingOperations() {
                     <h1 className="text-3xl font-bold text-white tracking-tight">Drilling Operations</h1>
                     <p className="text-sm text-slate-400 mt-1">Manage and track daily rig activity logs</p>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold text-sm shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] active:scale-[0.98] transition-all"
-                >
-                    <Plus className="h-5 w-5" />
-                    New Entry
-                </button>
-            </div>
 
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all"></div>
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                            <TrendingUp className="h-6 w-6 text-orange-400" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-slate-400">Total Meters</p>
-                            <h3 className="text-2xl font-bold text-white">{summaryStats.meters} <span className="text-sm font-medium text-slate-500">m</span></h3>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all"></div>
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
-                            <Clock className="h-6 w-6 text-red-400" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-slate-400">Total NPT</p>
-                            <h3 className="text-2xl font-bold text-white">{summaryStats.npt} <span className="text-sm font-medium text-slate-500">hrs</span></h3>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all"></div>
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-                            <Fuel className="h-6 w-6 text-amber-400" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-slate-400">Fuel Consumed</p>
-                            <h3 className="text-2xl font-bold text-white">{summaryStats.fuel} <span className="text-sm font-medium text-slate-500">L</span></h3>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                            <Drill className="h-6 w-6 text-emerald-400" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-slate-400">Active Rigs</p>
-                            <h3 className="text-2xl font-bold text-white">{summaryStats.rigs}</h3>
-                        </div>
-                    </div>
+                {/* View Tabs */}
+                <div className="flex gap-2 p-1 bg-[#0f172a] border border-slate-800/60 rounded-xl shadow-inner">
+                    <button
+                        onClick={() => setActiveTab('entry')}
+                        className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'entry' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+                    >
+                        Data Entry Form
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'history' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+                    >
+                        History Log
+                    </button>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-3 items-center p-4 rounded-2xl bg-gradient-to-r from-[#111827] to-[#0f172a] border border-slate-800/60 shadow-md">
-                <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <input
-                        type="text"
-                        placeholder="Search rig, project, supervisor..."
-                        value={filter.search}
-                        onChange={e => setFilter(f => ({ ...f, search: e.target.value }))}
-                        className="w-full pl-10 pr-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+            {activeTab === 'entry' ? (
+                <div className="max-w-4xl mx-auto mt-4">
+                    <DrillingEntryModal
+                        isInline={true}
+                        onSuccess={() => {
+                            fetchEntries();
+                            setActiveTab('history');
+                        }}
                     />
                 </div>
-                <select value={filter.rigId} onChange={e => setFilter(f => ({ ...f, rigId: e.target.value }))} className={selectClass}>
-                    <option value="">All Rigs</option>
-                    {rigs.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-                <select value={filter.projectId} onChange={e => setFilter(f => ({ ...f, projectId: e.target.value }))} className={selectClass}>
-                    <option value="">All Projects</option>
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <select value={filter.shift} onChange={e => setFilter(f => ({ ...f, shift: e.target.value }))} className={selectClass}>
-                    <option value="">All Shifts</option>
-                    <option value="Day">Day</option>
-                    <option value="Night">Night</option>
-                </select>
-            </div>
+            ) : (
+                <>
+                    {/* KPI Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all"></div>
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                                    <TrendingUp className="h-6 w-6 text-orange-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-slate-400">Total Meters</p>
+                                    <h3 className="text-2xl font-bold text-white">{summaryStats.meters} <span className="text-sm font-medium text-slate-500">m</span></h3>
+                                </div>
+                            </div>
+                        </div>
 
-            {/* Table */}
-            <div className="rounded-2xl bg-gradient-to-b from-[#111827] to-[#0f172a] shadow-xl border border-slate-800/60 overflow-hidden flex flex-col min-h-[500px]">
-                <div className="overflow-x-auto flex-grow">
-                    <table className="w-full text-sm table-fixed min-w-[1200px]">
-                        <thead className="bg-[#0f172a]/95 sticky top-0 z-10 backdrop-blur-md">
-                            <tr className="border-b border-slate-700/60">
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[120px]">Date</th>
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[150px]">Rig</th>
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[150px]">Project</th>
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[100px]">Shift</th>
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[120px]">Meters</th>
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[100px]">NPT (H)</th>
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[130px]">Fuel (L)</th>
-                                <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[160px]">Supervisor</th>
-                                <th className="text-center px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[100px]">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                [1, 2, 3, 4, 5, 6].map(i => (
-                                    <tr key={i} className="border-b border-slate-800/40">
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(j => (
-                                            <td key={j} className="px-5 py-4"><div className="h-5 bg-slate-800 rounded-md animate-pulse" /></td>
-                                        ))}
-                                    </tr>
-                                ))
-                            ) : paginated.length > 0 ? paginated.map(entry => (
-                                <tr key={entry.id} className="border-b border-slate-800/40 hover:bg-slate-800/40 transition-all group">
-                                    <td className="px-6 py-5 text-slate-300 font-medium whitespace-nowrap">{new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                                    <td className="px-6 py-5 text-white font-semibold">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0"></div>
-                                            <span className="truncate">{entry.rig?.name}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5 text-slate-300 font-medium truncate">{entry.project?.name}</td>
-                                    <td className="px-6 py-5">
-                                        <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide ${entry.shift === 'Day' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
-                                            {entry.shift}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-5 text-left font-bold text-orange-400">{entry.metersDrilled.toLocaleString()} m</td>
-                                    <td className="px-6 py-5 text-left font-medium text-slate-300">{entry.nptHours || 0} h</td>
-                                    <td className="px-6 py-5 text-left font-semibold text-amber-200">{entry.fuelConsumed?.toLocaleString() || '—'} L</td>
-                                    <td className="px-6 py-5 text-slate-300 font-medium truncate">{entry.supervisorName || '—'}</td>
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => openEdit(entry)}
-                                                className="p-1.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-all"
-                                                title="Edit Entry"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => setDeleteTarget(entry)}
-                                                className="p-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all"
-                                                title="Delete Entry"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={9} className="px-5 py-12 text-center text-slate-600">No entries found</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                        <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all"></div>
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                                    <Clock className="h-6 w-6 text-red-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-slate-400">Total NPT</p>
+                                    <h3 className="text-2xl font-bold text-white">{summaryStats.npt} <span className="text-sm font-medium text-slate-500">hrs</span></h3>
+                                </div>
+                            </div>
+                        </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800/50">
-                        <span className="text-xs text-slate-500">
-                            Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
-                        </span>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let pageNum;
-                                if (totalPages <= 5) pageNum = i + 1;
-                                else if (page <= 3) pageNum = i + 1;
-                                else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
-                                else pageNum = page - 2 + i;
-                                return (
-                                    <button
-                                        key={pageNum}
-                                        onClick={() => setPage(pageNum)}
-                                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${pageNum === page ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                                    >
-                                        {pageNum}
-                                    </button>
-                                );
-                            })}
-                            <button
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                disabled={page === totalPages}
-                                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
+                        <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all"></div>
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                                    <Fuel className="h-6 w-6 text-amber-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-slate-400">Fuel Consumed</p>
+                                    <h3 className="text-2xl font-bold text-white">{summaryStats.fuel} <span className="text-sm font-medium text-slate-500">L</span></h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-[#111827] to-[#0f172a] rounded-2xl p-5 border border-slate-800/60 shadow-lg relative overflow-hidden group">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                                    <Drill className="h-6 w-6 text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-slate-400">Active Rigs</p>
+                                    <h3 className="text-2xl font-bold text-white">{summaryStats.rigs}</h3>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                )}
-            </div>
+
+                    {/* Filters */}
+                    <div className="flex flex-wrap gap-3 items-center p-4 rounded-2xl bg-gradient-to-r from-[#111827] to-[#0f172a] border border-slate-800/60 shadow-md">
+                        <div className="relative flex-1 min-w-[200px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                            <input
+                                type="text"
+                                placeholder="Search rig, project, supervisor..."
+                                value={filter.search}
+                                onChange={e => setFilter(f => ({ ...f, search: e.target.value }))}
+                                className="w-full pl-10 pr-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                            />
+                        </div>
+                        <select value={filter.rigId} onChange={e => setFilter(f => ({ ...f, rigId: e.target.value }))} className={selectClass}>
+                            <option value="">All Rigs</option>
+                            {rigs.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                        <select value={filter.projectId} onChange={e => setFilter(f => ({ ...f, projectId: e.target.value }))} className={selectClass}>
+                            <option value="">All Projects</option>
+                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                        <select value={filter.shift} onChange={e => setFilter(f => ({ ...f, shift: e.target.value }))} className={selectClass}>
+                            <option value="">All Shifts</option>
+                            <option value="Day">Day</option>
+                            <option value="Night">Night</option>
+                        </select>
+                    </div>
+
+                    {/* Table */}
+                    <div className="rounded-2xl bg-gradient-to-b from-[#111827] to-[#0f172a] shadow-xl border border-slate-800/60 overflow-hidden flex flex-col min-h-[500px]">
+                        <div className="overflow-x-auto flex-grow">
+                            <table className="w-full text-sm table-fixed min-w-[1200px]">
+                                <thead className="bg-[#0f172a]/95 sticky top-0 z-10 backdrop-blur-md">
+                                    <tr className="border-b border-slate-700/60">
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[120px]">Date</th>
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[150px]">Rig</th>
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[150px]">Project</th>
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[100px]">Shift</th>
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[120px]">Meters</th>
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[100px]">NPT (H)</th>
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[130px]">Fuel (L)</th>
+                                        <th className="text-left px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[160px]">Supervisor</th>
+                                        <th className="text-center px-6 py-5 text-xs text-slate-400 uppercase tracking-widest font-semibold min-w-[100px]">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {loading ? (
+                                        [1, 2, 3, 4, 5, 6].map(i => (
+                                            <tr key={i} className="border-b border-slate-800/40">
+                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(j => (
+                                                    <td key={j} className="px-5 py-4"><div className="h-5 bg-slate-800 rounded-md animate-pulse" /></td>
+                                                ))}
+                                            </tr>
+                                        ))
+                                    ) : paginated.length > 0 ? paginated.map(entry => (
+                                        <tr key={entry.id} className="border-b border-slate-800/40 hover:bg-slate-800/40 transition-all group">
+                                            <td className="px-6 py-5 text-slate-300 font-medium whitespace-nowrap">{new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                            <td className="px-6 py-5 text-white font-semibold">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0"></div>
+                                                    <span className="truncate">{entry.rig?.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 text-slate-300 font-medium truncate">{entry.project?.name}</td>
+                                            <td className="px-6 py-5">
+                                                <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide ${entry.shift === 'Day' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
+                                                    {entry.shift}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-left font-bold text-orange-400">{entry.metersDrilled.toLocaleString()} m</td>
+                                            <td className="px-6 py-5 text-left font-medium text-slate-300">{entry.nptHours || 0} h</td>
+                                            <td className="px-6 py-5 text-left font-semibold text-amber-200">{entry.fuelConsumed?.toLocaleString() || '—'} L</td>
+                                            <td className="px-6 py-5 text-slate-300 font-medium truncate">{entry.supervisorName || '—'}</td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => openEdit(entry)}
+                                                        className="p-1.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-all"
+                                                        title="Edit Entry"
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteTarget(entry)}
+                                                        className="p-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all"
+                                                        title="Delete Entry"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={9} className="px-5 py-12 text-center text-slate-600">No entries found</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800/50">
+                                <span className="text-xs text-slate-500">
+                                    Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page === 1}
+                                        className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </button>
+                                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                        let pageNum;
+                                        if (totalPages <= 5) pageNum = i + 1;
+                                        else if (page <= 3) pageNum = i + 1;
+                                        else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                        else pageNum = page - 2 + i;
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                onClick={() => setPage(pageNum)}
+                                                className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${pageNum === page ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    })}
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={page === totalPages}
+                                        className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* New Entry Modal */}
             {showModal && <DrillingEntryModal onClose={() => setShowModal(false)} onSuccess={() => { setShowModal(false); fetchEntries(); }} />}
